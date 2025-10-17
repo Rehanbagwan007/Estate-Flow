@@ -11,13 +11,13 @@ export default async function DashboardLayout({
   const supabase = createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await (await supabase).auth.getUser()
 
   if (!user) {
     redirect('/login');
   }
 
-  const { data: profile } = await supabase
+  const { data: profile } = await (await supabase)  
     .from('profiles')
     .select('first_name, last_name, email, role')
     .eq('id', user.id)

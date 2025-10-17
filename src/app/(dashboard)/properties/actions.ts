@@ -14,7 +14,7 @@ export async function saveProperty(
   const supabase = createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await (await supabase).auth.getUser();
 
   if (!user) {
     return { message: 'Authentication required.' };
@@ -30,7 +30,7 @@ export async function saveProperty(
     };
   }
 
-  const { data: propertyData, ...rest } = validatedFields.data;
+ // const { data: propertyData, ...rest } = validatedFields.data;
   const files = formData.getAll('files') as File[];
   const propertyId = formData.get('id') as string | null;
 
@@ -39,7 +39,7 @@ export async function saveProperty(
   try {
     if (propertyId) {
       // Update existing property
-      const { data, error } = await supabase
+      const { data, error } = await (await supabase)
         .from('properties')
         .update({ ...validatedFields.data, updated_at: new Date().toISOString() })
         .eq('id', propertyId)
@@ -49,7 +49,7 @@ export async function saveProperty(
       savedProperty = data;
     } else {
       // Create new property
-      const { data, error } = await supabase
+      const { data, error } = await (await supabase)
         .from('properties')
         .insert({
           ...validatedFields.data,
@@ -70,7 +70,7 @@ export async function saveProperty(
     if (files.length > 0 && files[0].size > 0) {
       for (const file of files) {
         const filePath = `${user.id}/${savedProperty.id}/${Date.now()}-${file.name}`;
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await (await supabase)?.storage
           .from('property_media')
           .upload(filePath, file);
 
@@ -79,11 +79,11 @@ export async function saveProperty(
           continue; // Or handle more gracefully
         }
         
-        const { data: urlData } = supabase.storage
+        const { data: urlData } = (await supabase)?.storage
           .from('property_media')
           .getPublicUrl(filePath);
 
-        await supabase.from('property_media').insert({
+        await (await supabase).from('property_media').insert({
           property_id: savedProperty.id,
           file_path: urlData.publicUrl,
           file_type: file.type,
