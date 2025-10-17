@@ -6,14 +6,14 @@ async function getDashboardData() {
   const supabase = createClient();
    const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await (await supabase).auth.getUser()
 
   if (!user) {
     redirect('/login');
   }
 
-  const propertiesPromise = supabase.from('properties').select('*').order('created_at', { ascending: false });
-  const leadsPromise = supabase.from('leads').select('*, profile:profiles(*)').order('created_at', { ascending: false });
+  const propertiesPromise = (await supabase).from('properties').select('*').order('created_at', { ascending: false });
+  const leadsPromise = (await supabase).from('leads').select('*, profile:profiles(*)').order('created_at', { ascending: false });
   
   const [propertiesResult, leadsResult] = await Promise.all([propertiesPromise, leadsPromise]);
 
