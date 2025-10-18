@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    serverActions: {
+      allowedOrigins: ["*" , "127.0.0.1:9002" , "jubilant-space-doodle-x5vvwq5rwq6wfv7xw-9002.app.github.dev"],
+    },
+  },
   images: {
     remotePatterns: [
       {
