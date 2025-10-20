@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation';
 
 export async function login(values: z.infer<typeof loginSchema>) {
   const supabase = createClient();
-  const { data, error } = await supabase.auth.signInWithPassword(values);
+  const { data, error } = await (await supabase).auth.signInWithPassword(values);
 
   if (error) {
     return { error: error.message };
@@ -18,7 +18,7 @@ export async function login(values: z.infer<typeof loginSchema>) {
 
 export async function signup(values: z.infer<typeof signupSchema>) {
   const supabase = createClient();
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await (await supabase).auth.signUp({
     email: values.email,
     password: values.password,
     options: {
