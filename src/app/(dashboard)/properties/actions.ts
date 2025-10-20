@@ -91,6 +91,7 @@ export async function saveProperty(
       }
     }
   } catch (error) {
+    console.error(error)
     let message = 'An unknown error occurred';
     if (error instanceof Error) {
       message = error.message;
