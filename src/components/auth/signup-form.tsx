@@ -19,6 +19,7 @@ import { signup } from '@/app/(auth)/actions';
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export function SignupForm() {
   const { toast } = useToast();
@@ -31,6 +32,7 @@ export function SignupForm() {
       lastName: '',
       email: '',
       password: '',
+      role: 'customer',
     },
   });
 
@@ -117,6 +119,34 @@ export function SignupForm() {
                     disabled={isPending}
                   />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Role (temporary)</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger disabled={isPending}>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="super_admin">Super Admin</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="agent">Agent</SelectItem>
+                    <SelectItem value="caller_1">Caller 1</SelectItem>
+                    <SelectItem value="caller_2">Caller 2</SelectItem>
+                    <SelectItem value="sales_manager">Sales Manager</SelectItem>
+                    <SelectItem value="sales_executive_1">Sales Executive 1</SelectItem>
+                    <SelectItem value="sales_executive_2">Sales Executive 2</SelectItem>
+                    <SelectItem value="customer">Customer</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}

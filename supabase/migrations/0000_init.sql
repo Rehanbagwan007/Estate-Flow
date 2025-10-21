@@ -1,6 +1,16 @@
 
 -- Enums
-CREATE TYPE public.user_role AS ENUM ('admin', 'agent');
+CREATE TYPE public.user_role AS ENUM (
+  'super_admin',
+  'admin', 
+  'agent',
+  'caller_1',
+  'caller_2',
+  'sales_manager',
+  'sales_executive_1',
+  'sales_executive_2',
+  'customer'
+);
 CREATE TYPE public.property_status AS ENUM ('Available', 'Sold', 'Rented', 'Upcoming');
 CREATE TYPE public.lead_status AS ENUM ('Hot', 'Warm', 'Cold');
 CREATE TYPE public.task_status AS ENUM ('Todo', 'InProgress', 'Done');
@@ -34,7 +44,7 @@ BEGIN
     NEW.raw_user_meta_data->>'first_name',
     NEW.raw_user_meta_data->>'last_name',
     NEW.email,
-    'agent' -- Default role
+    COALESCE(NEW.raw_user_meta_data->>'role', 'agent')::user_role -- Use selected role or default to agent
   );
   RETURN NEW;
 END;

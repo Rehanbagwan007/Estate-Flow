@@ -11,6 +11,17 @@ export const signupSchema = z.object({
   lastName: z.string().min(2, 'Last name is required'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  role: z.enum([
+    'super_admin',
+    'admin',
+    'agent',
+    'caller_1',
+    'caller_2',
+    'sales_manager',
+    'sales_executive_1',
+    'sales_executive_2',
+    'customer',
+  ]),
 });
 
 export const propertySchema = z.object({
