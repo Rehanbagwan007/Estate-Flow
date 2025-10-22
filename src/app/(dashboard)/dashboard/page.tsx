@@ -8,6 +8,7 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // The main layout now handles the user check, but we keep this as a safeguard.
   if (!user) {
     redirect('/login');
   }
@@ -17,25 +18,14 @@ export default async function DashboardPage() {
     .select('role, approval_status')
     .eq('id', user.id)
     .single();
-
-  // This handles the case where a user is created in auth but the profile trigger fails or is delayed
-  if (profileError && profileError.code === 'PGRST116') {
-      console.error('Profile not found for user, redirecting to login.', { userId: user.id });
-      // It's safer to log them out to force a clean slate.
-      redirect('/login');
-  }
-
-  if (profileError) {
-      console.error('Unexpected error fetching profile:', profileError);
+  
+  // The layout also handles this, but it's good practice for a page to be self-sufficient.
+  if (profileError || !profile) {
+      console.error('Error fetching profile on dashboard page:', { profileError, userId: user.id });
       redirect('/login');
   }
   
-  if (!profile) {
-    console.error('No profile found and could not create one');
-    redirect('/login');
-  }
-  
-  // Customer approval logic
+  // The layout handles this redirection, so this is redundant but safe.
   if (profile.role === 'customer' && profile.approval_status !== 'approved') {
     redirect('/pending-approval');
   }

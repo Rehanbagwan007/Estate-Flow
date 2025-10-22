@@ -19,20 +19,25 @@ export default async function DashboardLayout({
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('first_name, last_name, email, role')
+    .select('first_name, last_name, email, role, approval_status')
     .eq('id', user.id)
     .single();
 
+  // If there's an error and it's not the "no rows found" error, something is wrong.
   if (profileError && profileError.code !== 'PGRST116') {
     console.error('Error fetching profile in layout:', profileError);
-    // Potentially redirect to an error page or just log out
     redirect('/login');
   }
   
+  // If the profile is still not found after login, redirect to login.
   if (!profile) {
-    console.error('No profile found for user in layout.');
-    // This case should ideally not be hit if middleware and signup are correct
+    console.error('No profile found for user in layout, redirecting to login.', { userId: user.id });
     redirect('/login');
+  }
+  
+  // Handle customer approval flow
+  if (profile.role === 'customer' && profile.approval_status !== 'approved') {
+    return redirect('/pending-approval');
   }
 
   return (

@@ -69,42 +69,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // If user is not authenticated and tries to access a protected route, redirect to login
-  if (!user && !isAuthRoute) {
-    // Let the root page handle redirection if it's the target
-    if (pathname === '/') {
-        return response;
-    }
+  if (!user && !isAuthRoute && pathname !== '/pending-approval') {
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, approval_status')
-      .eq('id', user.id)
-      .single();
-    
-    // If a profile exists, enforce role-based rules
-    if (profile) {
-        if (profile.role === 'customer') {
-            if (profile.approval_status !== 'approved' && pathname !== '/pending-approval') {
-                return NextResponse.redirect(new URL('/pending-approval', request.url));
-            }
-            if (profile.approval_status === 'approved' && pathname === '/pending-approval') {
-                return NextResponse.redirect(new URL('/', request.url));
-            }
-        } else {
-            if (pathname === '/pending-approval') {
-                return NextResponse.redirect(new URL('/', request.url));
-            }
-        }
-    } 
-    // If no profile is found for an authenticated user, it might be a race condition on signup.
-    // Instead of logging them out, we'll let the request proceed. 
-    // The page-level checks will handle any required redirection if the profile is still missing.
-    // The previous logic that caused a redirect loop was here.
-  }
-
   // Refresh the session token
   await supabase.auth.getSession();
 
