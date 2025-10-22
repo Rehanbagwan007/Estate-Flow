@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
               headers: request.headers,
             },
           });
-          response.cookies.set({ name, value, ...options });
+          response.cookies.set({ name, value: '', ...options });
         },
       },
     }
@@ -46,14 +46,13 @@ export async function middleware(request: NextRequest) {
 
   const authRoutes = ['/login', '/signup'];
   const isAuthRoute = authRoutes.includes(pathname);
-  const isDashboardRoute = pathname.startsWith('/dashboard');
 
   // If user is authenticated and tries to access login/signup, redirect to dashboard
   if (user && isAuthRoute) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // If user is not authenticated and tries to access a protected route, redirect to login
+  // If user is not authenticated and tries to access a protected route (not auth or root), redirect to login
   if (!user && !isAuthRoute && pathname !== '/') {
     return NextResponse.redirect(new URL('/login', request.url));
   }
@@ -65,10 +64,12 @@ export async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    // If profile is missing, something is wrong, send to login to be safe
+    // If profile is missing, something is wrong, sign out and send to login to be safe
     if (!profile && !isAuthRoute) {
         await supabase.auth.signOut();
-        return NextResponse.redirect(new URL('/login', request.url));
+        const redirectUrl = new URL('/login', request.url);
+        redirectUrl.searchParams.set('error', 'profile_not_found');
+        return NextResponse.redirect(redirectUrl);
     }
     
     if (profile) {
