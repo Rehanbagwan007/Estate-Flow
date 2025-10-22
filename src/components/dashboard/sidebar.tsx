@@ -8,6 +8,15 @@ import {
   ListTodo,
   BarChart3,
   Users2,
+  Phone,
+  Settings,
+  Heart,
+  Calendar,
+  Target,
+  Award,
+  Building,
+  UserCheck,
+  Bell
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Logo } from '@/components/icons/logo';
@@ -23,12 +32,43 @@ export function Sidebar({ userRole }: SidebarProps) {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'Dashboard', icon: Home, roles: ['admin', 'agent'] },
-    { href: '/properties', label: 'Properties', icon: Building2, roles: ['admin', 'agent'] },
-    { href: '/leads', label: 'Leads', icon: Users, roles: ['admin', 'agent'] },
-    { href: '/tasks', label: 'Tasks', icon: ListTodo, roles: ['admin', 'agent'] },
-    { href: '/agents', label: 'Agents', icon: Users2, roles: ['admin'] },
-    { href: '/analytics', label: 'Analytics', icon: BarChart3, roles: ['admin'] },
+    // Common items
+    { href: '/', label: 'Dashboard', icon: Home, roles: ['super_admin', 'admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2', 'customer'] },
+    
+    // Super Admin & Admin
+    { href: '/admin/users', label: 'User Management', icon: UserCheck, roles: ['super_admin', 'admin'] },
+    { href: '/admin/approvals', label: 'Pending Approvals', icon: Bell, roles: ['super_admin', 'admin'] },
+    { href: '/admin/assignments', label: 'Agent Assignments', icon: Target, roles: ['super_admin', 'admin'] },
+    { href: '/admin/call-recordings', label: 'Call Recordings', icon: Phone, roles: ['super_admin', 'admin'] },
+    { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, roles: ['super_admin', 'admin'] },
+    { href: '/admin/settings', label: 'Settings', icon: Settings, roles: ['super_admin', 'admin'] },
+    
+    // Properties (Admin, Agent, Customer)
+    { href: '/properties', label: 'Properties', icon: Building2, roles: ['super_admin', 'admin', 'agent', 'customer'] },
+    { href: '/properties/new', label: 'Add Property', icon: Building, roles: ['super_admin', 'admin', 'agent'] },
+    
+    // Leads (Admin, Agent, Sales roles)
+    { href: '/leads', label: 'Leads', icon: Users, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
+    { href: '/leads/new', label: 'Add Lead', icon: Users2, roles: ['super_admin', 'admin', 'agent'] },
+    
+    // Tasks (Admin, Agent, Sales roles)
+    { href: '/tasks', label: 'Tasks', icon: ListTodo, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
+    
+    // Calls (Caller roles, Admin, Agent)
+    { href: '/calls', label: 'Call Center', icon: Phone, roles: ['super_admin', 'admin', 'caller_1', 'caller_2', 'agent'] },
+    { href: '/calls/history', label: 'Call History', icon: Phone, roles: ['super_admin', 'admin', 'caller_1', 'caller_2', 'agent'] },
+    
+    // Sales Management
+    { href: '/sales/team', label: 'Sales Team', icon: Award, roles: ['super_admin', 'admin', 'sales_manager'] },
+    { href: '/sales/performance', label: 'Performance', icon: BarChart3, roles: ['super_admin', 'admin', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
+    
+    // Customer specific
+    { href: '/my-interests', label: 'My Interests', icon: Heart, roles: ['customer'] },
+    { href: '/my-appointments', label: 'My Appointments', icon: Calendar, roles: ['customer'] },
+    
+    // Agent specific
+    { href: '/agent/assignments', label: 'My Assignments', icon: Target, roles: ['agent', 'sales_executive_1', 'sales_executive_2'] },
+    { href: '/agent/customers', label: 'My Customers', icon: Users, roles: ['agent', 'sales_executive_1', 'sales_executive_2'] },
   ];
 
   const isActive = (href: string) => {

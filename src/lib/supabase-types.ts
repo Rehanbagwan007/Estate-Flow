@@ -311,6 +311,410 @@ export type Database = {
           },
         ]
       }
+      property_interests: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          interest_level: Database["public"]["Enums"]["interest_level"]
+          message: string | null
+          preferred_meeting_time: string | null
+          property_id: string
+          status: Database["public"]["Enums"]["interest_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          interest_level?: Database["public"]["Enums"]["interest_level"]
+          message?: string | null
+          preferred_meeting_time?: string | null
+          property_id: string
+          status?: Database["public"]["Enums"]["interest_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          interest_level?: Database["public"]["Enums"]["interest_level"]
+          message?: string | null
+          preferred_meeting_time?: string | null
+          property_id?: string
+          status?: Database["public"]["Enums"]["interest_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_interests_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_interests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointments: {
+        Row: {
+          agent_id: string
+          created_at: string
+          customer_id: string
+          duration_minutes: number | null
+          id: string
+          location: string | null
+          notes: string | null
+          property_interest_id: string
+          scheduled_at: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          customer_id: string
+          duration_minutes?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          property_interest_id: string
+          scheduled_at: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          customer_id?: string
+          duration_minutes?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          property_interest_id?: string
+          scheduled_at?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_property_interest_id_fkey"
+            columns: ["property_interest_id"]
+            isOneToOne: false
+            referencedRelation: "property_interests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_logs: {
+        Row: {
+          agent_id: string
+          call_id: string
+          call_status: Database["public"]["Enums"]["call_status"]
+          call_type: Database["public"]["Enums"]["call_type"]
+          created_at: string
+          customer_id: string
+          duration_seconds: number | null
+          id: string
+          notes: string | null
+          property_id: string | null
+          recording_duration_seconds: number | null
+          recording_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          call_id: string
+          call_status?: Database["public"]["Enums"]["call_status"]
+          call_type?: Database["public"]["Enums"]["call_type"]
+          created_at?: string
+          customer_id: string
+          duration_seconds?: number | null
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          recording_duration_seconds?: number | null
+          recording_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          call_id?: string
+          call_status?: Database["public"]["Enums"]["call_status"]
+          call_type?: Database["public"]["Enums"]["call_type"]
+          created_at?: string
+          customer_id?: string
+          duration_seconds?: number | null
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          recording_duration_seconds?: number | null
+          recording_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      field_visits: {
+        Row: {
+          address: string | null
+          agent_id: string
+          created_at: string
+          duration_minutes: number | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          notes: string | null
+          photos: string[] | null
+          property_id: string | null
+          visit_date: string
+          visit_type: Database["public"]["Enums"]["visit_type"]
+        }
+        Insert: {
+          address?: string | null
+          agent_id: string
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          photos?: string[] | null
+          property_id?: string | null
+          visit_date: string
+          visit_type?: Database["public"]["Enums"]["visit_type"]
+        }
+        Update: {
+          address?: string | null
+          agent_id?: string
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          photos?: string[] | null
+          property_id?: string | null
+          visit_date?: string
+          visit_type?: Database["public"]["Enums"]["visit_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_visits_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_visits_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean | null
+          message: string
+          sent_at: string | null
+          sent_via: Database["public"]["Enums"]["notification_channel"]
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          sent_at?: string | null
+          sent_via?: Database["public"]["Enums"]["notification_channel"]
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          sent_at?: string | null
+          sent_via?: Database["public"]["Enums"]["notification_channel"]
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integration_settings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          integration_type: Database["public"]["Enums"]["integration_type"]
+          is_active: boolean | null
+          settings: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          integration_type: Database["public"]["Enums"]["integration_type"]
+          is_active?: boolean | null
+          settings: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          integration_type?: Database["public"]["Enums"]["integration_type"]
+          is_active?: boolean | null
+          settings?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_settings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_assignments: {
+        Row: {
+          agent_id: string
+          assigned_by: string
+          assignment_type: Database["public"]["Enums"]["assignment_type"]
+          created_at: string
+          customer_id: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          priority: Database["public"]["Enums"]["assignment_priority"]
+          property_interest_id: string | null
+          status: Database["public"]["Enums"]["assignment_status"]
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          assigned_by: string
+          assignment_type?: Database["public"]["Enums"]["assignment_type"]
+          created_at?: string
+          customer_id: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: Database["public"]["Enums"]["assignment_priority"]
+          property_interest_id?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          assigned_by?: string
+          assignment_type?: Database["public"]["Enums"]["assignment_type"]
+          created_at?: string
+          customer_id?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: Database["public"]["Enums"]["assignment_priority"]
+          property_interest_id?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_assignments_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_assignments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_assignments_property_interest_id_fkey"
+            columns: ["property_interest_id"]
+            isOneToOne: false
+            referencedRelation: "property_interests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -322,7 +726,19 @@ export type Database = {
       lead_status: "Hot" | "Warm" | "Cold"
       property_status: "Available" | "Sold" | "Rented" | "Upcoming"
       task_status: "Todo" | "InProgress" | "Done"
-      user_role: "admin" | "agent"
+      user_role: "admin" | "agent" | "super_admin" | "caller_1" | "caller_2" | "sales_manager" | "sales_executive_1" | "sales_executive_2" | "customer"
+      interest_level: "interested" | "very_interested" | "ready_to_buy"
+      interest_status: "pending" | "assigned" | "contacted" | "meeting_scheduled" | "completed" | "cancelled"
+      appointment_status: "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled" | "no_show"
+      call_status: "initiated" | "ringing" | "answered" | "completed" | "failed" | "busy" | "no_answer"
+      call_type: "inbound" | "outbound"
+      visit_type: "property_visit" | "customer_meeting" | "site_inspection" | "follow_up"
+      notification_type: "property_interest" | "appointment_reminder" | "call_reminder" | "approval_status" | "task_assigned" | "meeting_scheduled"
+      notification_channel: "app" | "email" | "whatsapp" | "sms"
+      integration_type: "exotel" | "whatsapp" | "olx" | "99acres" | "facebook" | "instagram"
+      assignment_type: "property_interest" | "follow_up" | "cold_call" | "meeting"
+      assignment_priority: "low" | "medium" | "high" | "urgent"
+      assignment_status: "assigned" | "accepted" | "in_progress" | "completed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never

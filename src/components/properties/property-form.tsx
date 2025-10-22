@@ -13,6 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -29,53 +30,42 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { propertySchema } from '@/schemas';
-import { PROPERTY_STATUSES } from '@/lib/constants';
+import { propertySchema as basePropertySchema } from '@/schemas';
 import type { Property } from '@/lib/types';
-import { useFormState } from 'react-dom';
 import { saveProperty } from '@/app/(dashboard)/properties/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, UploadCloud, X } from 'lucide-react';
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import Image from 'next/image';
 
 interface PropertyFormProps {
   property?: Property;
 }
 
-const SubmitButton = () => {
-  const [isPending, startTransition] = useTransition();
-  const { formState } = useFormContext();
+const formSchema = basePropertySchema.extend({
+  share_platforms: z.array(z.string()).optional(),
+});
 
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    // Manually trigger validation on click
-    formState.trigger();
-    if (!formState.isValid) {
-      event.preventDefault();
-      return;
-    }
-    // `useFormStatus` can't be used here, so we use a transition
-    startTransition(() => {});
-  };
-
-  return (
-    <Button type="submit" disabled={isPending} onClick={handleClick}>
-      {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-      {isPending ? 'Saving...' : 'Save Property'}
-    </Button>
-  );
-};
-
+const SHARING_PLATFORMS = [
+  { id: '99acres', label: '99acres' },
+  { id: 'olx', label: 'OLX' },
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'facebook', label: 'Facebook' },
+];
 
 export function PropertyForm({ property }: PropertyFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof propertySchema>>({
-    resolver: zodResolver(propertySchema),
-    defaultValues: property || {
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: property ? {
+      ...property,
+      share_platforms: [], // Don't pre-select on updates
+    } : {
       title: '',
       description: '',
+      property_type: 'Residential',
       address: '',
       city: '',
       state: '',
@@ -85,6 +75,7 @@ export function PropertyForm({ property }: PropertyFormProps) {
       bathrooms: 0,
       area_sqft: 0,
       status: 'Available',
+      share_platforms: ['instagram', 'facebook'], // Default selections for new properties
     },
   });
 
@@ -107,25 +98,36 @@ export function PropertyForm({ property }: PropertyFormProps) {
   };
 
 
-  const onSubmit = (values: z.infer<typeof propertySchema>) => {
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
     startTransition(async () => {
       const formData = new FormData();
       if(property?.id) {
         formData.append('id', property.id);
       }
+      
       Object.entries(values).forEach(([key, value]) => {
-        formData.append(key, String(value));
+        if (key === 'share_platforms' && Array.isArray(value)) {
+          value.forEach(platform => formData.append('share_platforms', platform));
+        } else if (value !== undefined && value !== null) {
+          formData.append(key, String(value));
+        }
       });
+
       files.forEach(file => {
         formData.append('files', file);
       });
 
       const result = await saveProperty({ message: '' }, formData);
-      if (result?.message) {
+      if (result?.message && !result.success) {
         toast({
           title: 'Error',
           description: result.message,
           variant: 'destructive',
+        });
+      } else if (result?.success as string) {
+        toast({
+          title: 'Success!',
+          description: result.message,
         });
       }
     });
@@ -170,6 +172,28 @@ export function PropertyForm({ property }: PropertyFormProps) {
                           {...field}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="property_type"
+                  render={({ field }) => (
+                    <FormItem>
+                       <FormLabel>Property Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select property type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Residential">Residential</SelectItem>
+                          <SelectItem value="Commercial">Commercial</SelectItem>
+                          <SelectItem value="Land">Land</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -275,7 +299,6 @@ export function PropertyForm({ property }: PropertyFormProps) {
                  )}
               </CardContent>
             </Card>
-
           </div>
           <div className="lg:col-span-1 space-y-8">
             <Card>
@@ -355,11 +378,10 @@ export function PropertyForm({ property }: PropertyFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {PROPERTY_STATUSES.map((status) => (
-                            <SelectItem key={status} value={status}>
-                              {status}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="Available">Available</SelectItem>
+                          <SelectItem value="Sold">Sold</SelectItem>
+                          <SelectItem value="Rented">Rented</SelectItem>
+                          <SelectItem value="Upcoming">Upcoming</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -369,11 +391,57 @@ export function PropertyForm({ property }: PropertyFormProps) {
               </CardContent>
             </Card>
 
+            {!property?.id && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Sharing</CardTitle>
+                  <CardDescription>Select where to share this property upon creation.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FormField
+                    control={form.control}
+                    name="share_platforms"
+                    render={() => (
+                      <FormItem className="space-y-3">
+                        {SHARING_PLATFORMS.map((item) => (
+                          <FormField
+                            key={item.id}
+                            control={form.control}
+                            name="share_platforms"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(item.id)}
+                                    onCheckedChange={(checked) => {
+                                      return checked
+                                        ? field.onChange([...(field.value || []), item.id])
+                                        : field.onChange(
+                                            (field.value || []).filter(
+                                              (value) => value !== item.id
+                                            )
+                                          );
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="font-normal">{item.label}</FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        ))}
+                      <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline">Cancel</Button>
               <Button type="submit" disabled={isPending}>
                 {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {property ? 'Update Property' : 'Create Property'}
+                {property ? 'Update Property' : 'Create & Share'}
               </Button>
             </div>
           </div>

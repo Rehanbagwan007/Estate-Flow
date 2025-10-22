@@ -6,25 +6,30 @@ import { loginSchema, signupSchema } from '@/schemas';
 import { redirect } from 'next/navigation';
 
 export async function login(values: z.infer<typeof loginSchema>) {
-  const supabase = createClient();
-  const { data, error } = await (await supabase).auth.signInWithPassword(values);
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithPassword(values);
 
   if (error) {
     return { error: error.message };
   }
   
-  redirect('/');
+  if (data.user) {
+    redirect('/');
+  }
+  
+  return { error: 'Login failed' };
 }
 
 export async function signup(values: z.infer<typeof signupSchema>) {
-  const supabase = createClient();
-  const { data, error } = await (await supabase).auth.signUp({
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signUp({
     email: values.email,
     password: values.password,
     options: {
       data: {
         first_name: values.firstName,
         last_name: values.lastName,
+        role: values.role,
       },
     },
   });

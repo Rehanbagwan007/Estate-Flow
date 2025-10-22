@@ -34,13 +34,18 @@ export function LoginForm() {
 
   function onSubmit(values: z.infer<typeof loginSchema>) {
     startTransition(async () => {
-      const result = await login(values);
-      if (result?.error) {
-        toast({
-          title: 'Login Failed',
-          description: result.error,
-          variant: 'destructive',
-        });
+      try {
+        const result = await login(values);
+        if (result?.error) {
+          toast({
+            title: 'Login Failed',
+            description: result.error,
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
+        // This might happen if redirect occurs, which is expected
+        console.log('Login successful, redirecting...');
       }
     });
   }
