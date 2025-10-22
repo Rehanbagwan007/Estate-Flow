@@ -26,7 +26,8 @@ export default async function DashboardPage() {
     return redirect('/login?error=profile_not_found');
   }
 
-  // The layout handles this redirection, so this is redundant but safe.
+  // This is the correct place to handle this specific redirect.
+  // The layout ensures the user is logged in, and this page directs them based on their status.
   if (profile.role === 'customer' && profile.approval_status !== 'approved') {
     redirect('/pending-approval');
   }

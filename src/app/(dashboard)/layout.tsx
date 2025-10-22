@@ -25,21 +25,15 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .single();
 
-  // If there's an error and it's not the "no rows found" error, something is wrong.
   if (profileError && profileError.code !== 'PGRST116') {
     console.error('Error fetching profile in layout:', profileError);
-    redirect('/login');
+    // If there's a significant error, a logout might be the safest option
+    redirect('/login?error=profile_fetch_failed');
   }
   
-  // If the profile is still not found after login, redirect to login.
   if (!profile) {
     console.error('No profile found for user in layout, redirecting to login.', { userId: user.id });
     redirect('/login?error=profile_not_found');
-  }
-  
-  // Handle customer approval flow
-  if (profile.role === 'customer' && profile.approval_status !== 'approved') {
-    return redirect('/pending-approval');
   }
 
   return (
