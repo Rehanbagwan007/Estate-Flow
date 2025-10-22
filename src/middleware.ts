@@ -62,19 +62,21 @@ export async function middleware(request: NextRequest) {
 
   const authRoutes = ['/login', '/signup'];
   const isAuthRoute = authRoutes.includes(pathname);
+
+  // This is the critical check.
   const isPendingApprovalRoute = pathname === '/pending-approval';
 
-  // If user is authenticated and on an auth route, redirect to home
+  // If user is logged in and tries to access an auth page, redirect to home.
   if (user && isAuthRoute) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // If user is not authenticated and not on an auth route or the pending approval page, redirect to login.
+  // If user is not logged in and is trying to access a protected route, redirect to login.
   if (!user && !isAuthRoute && !isPendingApprovalRoute) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
-  // Refresh the session token
+  // Refresh the session token.
   await supabase.auth.getSession();
 
   return response;
