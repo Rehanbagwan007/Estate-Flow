@@ -26,16 +26,13 @@ export default async function DashboardLayout({
     .single();
   
   if (profileError || !profile) {
-    // This is the key change. Instead of redirecting to login and causing a loop,
-    // we redirect to a safe page. This handles the race condition where the profile
-    // isn't created yet immediately after signup.
+    // This can happen in a race condition right after signup.
+    // Redirecting to pending-approval gives the DB trigger time to run.
     return redirect('/pending-approval');
   }
 
-  // This is the correct place to handle this specific redirect for pending customers.
-  if (profile.role === 'customer' && profile.approval_status !== 'approved') {
-    redirect('/pending-approval');
-  }
+  // The check for pending customers is now handled in the dashboard page itself
+  // to avoid redirect loops with the middleware.
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
