@@ -1,4 +1,3 @@
-
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -18,64 +17,41 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // If the cookie is set, update the cookies for the request and response
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          request.cookies.set({ name, value, ...options })
           response = NextResponse.next({
             request: {
               headers: request.headers,
             },
           })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: CookieOptions) {
-          // If the cookie is removed, update the cookies for the request and response
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+          request.cookies.set({ name, value: '', ...options })
           response = NextResponse.next({
             request: {
               headers: request.headers,
             },
           })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+          response.cookies.set({ name, value: '', ...options })
         },
       },
     }
   )
 
-  // Refresh session if expired - required for Server Components
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
 
   const { pathname } = request.nextUrl;
 
-  // Define routes that are publicly accessible
-  const publicRoutes = ['/login', '/signup'];
+  const publicRoutes = ['/login'];
 
-  // If user is logged in and tries to access a public route, redirect to dashboard
   if (user && publicRoutes.includes(pathname)) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // If user is not logged in and tries to access a protected route, redirect to login
   if (!user && !publicRoutes.includes(pathname)) {
-    // Allow root access to redirect to dashboard (or login if no user)
+    // Allow access to root only to redirect, everything else needs login
     if (pathname === '/') return response;
-    
-    // Protect other routes
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
@@ -86,14 +62,16 @@ export async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (profile?.approval_status === 'pending' && !pathname.startsWith('/pending-approval')) {
+    const isApproved = profile?.approval_status === 'approved';
+    const onPendingPage = pathname.startsWith('/pending-approval');
+
+    if (!isApproved && !onPendingPage) {
         return NextResponse.redirect(new URL('/pending-approval', request.url));
     }
-    if (profile?.approval_status === 'approved' && pathname.startsWith('/pending-approval')) {
+    if (isApproved && onPendingPage) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
-
 
   return response
 }
