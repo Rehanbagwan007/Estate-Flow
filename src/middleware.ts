@@ -13,10 +13,10 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: (name: string) => {
+        get(name: string) {
           return request.cookies.get(name)?.value
         },
-        set: (name: string, value: string, options: CookieOptions) => {
+        set(name: string, value: string, options: CookieOptions) {
           request.cookies.set({
             name,
             value,
@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
             ...options,
           })
         },
-        remove: (name: string, options: CookieOptions) => {
+        remove(name: string, options: CookieOptions) {
           request.cookies.set({
             name,
             value: '',
@@ -60,6 +60,8 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   
+  // This logic is for a customer approval flow which is no longer active.
+  // It is safe to keep but does not impact the current redirect issue.
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -75,17 +77,19 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-
   const isAuthRoute = pathname === '/login' || pathname === '/signup';
 
-  // If user is logged in and tries to access an auth route, redirect to home.
+  // If user is logged in and tries to access an auth route, redirect to the dashboard.
   if (user && isAuthRoute) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   // If user is not logged in and is trying to access a protected route, redirect to login.
-  if (!user && !isAuthRoute && pathname !== '/pending-approval') {
-    return NextResponse.redirect(new URL('/login', request.url));
+  if (!user && !isAuthRoute) {
+     // Allow access to root page for redirection, but protect others.
+    if (pathname !== '/') {
+        return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
   
   // Refresh the session token.
@@ -101,7 +105,6 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - api/ (API routes)
      * Feel free to modify this pattern to include more paths.
      */
     '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
