@@ -3,8 +3,20 @@ import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Building2, Calendar, Phone } from 'lucide-react';
+import { Heart, Building2, Calendar, Phone, Trash2 } from 'lucide-react';
 import { cookies } from 'next/headers';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { deleteInterest } from './actions';
 
 export default async function MyInterestsPage() {
   const cookieStore = cookies();
@@ -32,18 +44,16 @@ export default async function MyInterestsPage() {
     redirect('/dashboard');
   }
 
-  // Get user's property interests
-  // BUG FIX: Removed 'property_type' from the selection as it does not exist in the 'properties' table schema.
   const { data: interests, error } = await supabase
     .from('property_interests')
     .select(`
       id,
       interest_level,
-       message,
+      message,
       preferred_meeting_time,
       status,
       created_at,
-      properties!inner (
+      property:properties (
         id,
         title,
         price,
@@ -51,7 +61,8 @@ export default async function MyInterestsPage() {
         city,
         state,
         bedrooms,
-        bathrooms
+        bathrooms,
+        property_type
       )
     `)
     .eq('customer_id', user.id)
@@ -138,12 +149,12 @@ export default async function MyInterestsPage() {
                       <Building2 className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">{interest.properties?.title || 'Property not available'}</p>
+                      <p className="font-medium">{interest.property?.title || 'Property not available'}</p>
                       <p className="text-sm text-muted-foreground">
-                        {interest.properties?.city ? `${interest.properties.city}, ${interest.properties.state} • ₹${interest.properties.price?.toLocaleString()}` : 'Details not available'}
+                        {interest.property?.city ? `${interest.property.city}, ${interest.property.state} • ₹${interest.property.price?.toLocaleString()}` : 'Details not available'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {interest.properties ? `${interest.properties.bedrooms} bed • ${interest.properties.bathrooms} bath` : ''}
+                        {interest.property ? `${interest.property.bedrooms} bed • ${interest.property.bathrooms} bath` : ''}
                       </p>
                     </div>
                   </div>
@@ -152,9 +163,27 @@ export default async function MyInterestsPage() {
                     <Badge variant={interest.status === 'contacted' ? 'default' : 'secondary'}>
                       {interest.status}
                     </Badge>
-                    <Button variant="outline" size="sm" disabled={!interest.properties}>
-                      View Details
-                    </Button>
+                     <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="icon">
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently remove your interest from this property.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <form action={deleteInterest.bind(null, interest.id)}>
+                            <AlertDialogAction type="submit" className="bg-destructive hover:bg-destructive/90">Continue</AlertDialogAction>
+                          </form>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               ))
