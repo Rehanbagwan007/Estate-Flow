@@ -11,10 +11,9 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // The middleware has already ensured the user is logged in.
+  // The layout has already handled the redirect if there is no user.
   if (!user) {
-    // This should theoretically never be reached.
-    return redirect('/login');
+    return null;
   }
 
   const { data: profile } = await supabase
@@ -23,10 +22,9 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
-  // The middleware has already ensured a profile exists.
+  // The layout has already handled the case of a missing profile.
   if (!profile) {
-     // This should theoretically never be reached.
-    return redirect('/login?message=Profile not found.');
+    return null;
   }
 
   // Render the role-specific dashboard.

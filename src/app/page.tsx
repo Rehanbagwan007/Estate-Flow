@@ -1,8 +1,16 @@
 
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
-export default function RootPage() {
-  // The middleware will handle authentication.
-  // This page simply redirects to the primary dashboard view.
-  redirect('/dashboard');
+export default async function RootPage() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (session) {
+    redirect('/dashboard');
+  } else {
+    redirect('/login');
+  }
 }

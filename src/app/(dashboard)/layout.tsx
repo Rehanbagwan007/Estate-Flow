@@ -16,22 +16,27 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser()
 
-  // The middleware should have already redirected if there is no user.
-  // This is a failsafe.
   if (!user) {
     redirect('/login');
   }
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('first_name, last_name, email, role')
+    .select('first_name, last_name, email, role, approval_status')
     .eq('id', user.id)
     .single();
   
-  // The middleware should have handled the case of a missing profile.
-  // This is a failsafe.
   if (!profile) {
-    redirect('/login?message=Profile not found.');
+    // This can happen if the profile creation failed or is delayed.
+    // Signing out and redirecting to login with an error is a safe fallback.
+    await supabase.auth.signOut();
+    redirect('/login?message=Profile not found. Please log in again.');
+  }
+
+  const isAdmin = ['super_admin', 'admin'].includes(profile.role);
+
+  if (!isAdmin && profile.approval_status !== 'approved') {
+    redirect('/pending-approval');
   }
 
   return (
