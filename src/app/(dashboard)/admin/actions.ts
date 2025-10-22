@@ -20,8 +20,20 @@ export async function getTeamMembers(roles: string[]) {
 }
 
 export async function assignAgentToInterest(propertyInterestId: string, agentId: string) {
+    console.log('--- Starting Agent Assignment ---');
+    console.log('Property Interest ID:', propertyInterestId);
+    console.log('Agent ID to assign:', agentId);
+
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        console.error('No authenticated user found.');
+        return { success: false, message: 'Authentication error: You must be logged in.' };
+    }
+    console.log('Assigning Admin ID:', user.id);
   
     const { data: interestUpdate, error: updateError } = await supabase
       .from('property_interests')
@@ -38,6 +50,8 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
         console.error("Failed to update interest status:", updateError);
         return { success: false, message: 'Failed to update interest status.' };
     }
+
+    console.log('Successfully updated property interest. Customer ID:', interestUpdate.customer_id);
   
     const { data: assignment, error: assignmentError } = await supabase
       .from('agent_assignments')
@@ -45,7 +59,7 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
         property_interest_id: propertyInterestId,
         agent_id: agentId,
         customer_id: interestUpdate.customer_id,
-        assigned_by: interestUpdate.customer_id, // This should be admin's ID, but for now user's.
+        assigned_by: user.id, // Correctly use the admin's user ID
         status: 'assigned',
         priority: 'medium',
         assignment_type: 'property_interest',
@@ -59,6 +73,8 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
         await supabase.from('property_interests').update({ status: 'pending' }).eq('id', propertyInterestId);
         return { success: false, message: 'Failed to create agent assignment.' };
     }
+
+    console.log('--- Agent Assignment Successful ---', assignment);
 
     // TODO: Trigger WhatsApp notification here in a real scenario
 
