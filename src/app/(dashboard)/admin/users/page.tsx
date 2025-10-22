@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, UserPlus, Shield, UserCheck } from 'lucide-react';
+import { Users, UserPlus, Shield, UserCheck, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,8 +12,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { AddUserForm } from "@/app/(dashboard)/admin/users/add-user-form"
+import { EditUserForm } from "@/app/(dashboard)/admin/users/edit-user-form"
 import { cookies } from 'next/headers';
+import { deleteUser } from './action';
+import type { Profile } from '@/lib/types';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog"
 
 export default async function AdminUsersPage() {
   const cookieStore = cookies();
@@ -44,6 +64,8 @@ export default async function AdminUsersPage() {
     .from('profiles')
     .select('id, first_name, last_name, email, phone, role, created_at')
     .order('created_at', { ascending: false });
+
+  const currentUserId = user.id;
 
   return (
     <div className="space-y-6">
@@ -125,25 +147,71 @@ export default async function AdminUsersPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {users?.map((user) => (
-              <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+            {users?.map((u: Profile) => (
+              <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center space-x-4">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                     <span className="text-sm font-medium">
-                      {user.first_name?.[0]}{user.last_name?.[0]}
+                      {u.first_name?.[0]}{u.last_name?.[0]}
                     </span>
                   </div>
                   <div>
-                    <p className="font-medium">{user.first_name} {user.last_name}</p>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                    <p className="text-sm text-muted-foreground">{user.phone}</p>
+                    <p className="font-medium">{u.first_name} {u.last_name}</p>
+                    <p className="text-sm text-muted-foreground">{u.email}</p>
+                    <p className="text-sm text-muted-foreground">{u.phone}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Badge variant="outline">{user.role}</Badge>
-                  <Button variant="outline" size="sm">
-                    Edit
-                  </Button>
+                  <Badge variant="outline">{u.role}</Badge>
+                  <Dialog>
+                    <AlertDialog>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" disabled={u.id === currentUserId}>
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DialogTrigger asChild>
+                                    <DropdownMenuItem>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Edit Role
+                                    </DropdownMenuItem>
+                                </DialogTrigger>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className="text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete User
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Edit User Role</DialogTitle>
+                                <DialogDescription>
+                                    Change the role for {u.first_name} {u.last_name}.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <EditUserForm user={u} />
+                        </DialogContent>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the user account
+                                    and remove their data from our servers.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <form action={deleteUser.bind(null, u.id)}>
+                                    <AlertDialogAction type="submit">Continue</AlertDialogAction>
+                                </form>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                  </Dialog>
                 </div>
               </div>
             ))}

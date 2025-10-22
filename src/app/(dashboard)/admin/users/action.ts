@@ -75,7 +75,54 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         return { error: 'User was created, but the credential email could not be sent.' };
     }
     
-    revalidatePath('/admin/users');
+    revalidatePath('/(dashboard)/admin/users');
 
     return { data: authData.user, message: 'User created and credentials have been sent!' };
+}
+
+export async function updateUserRole(userId: string, role: z.infer<typeof signupSchema>['role']) {
+    const supabaseAdmin = createAdminClient();
+  
+    // Update role in auth metadata
+    const { data: user, error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { user_metadata: { role } }
+    );
+  
+    if (authError) {
+      console.error('Error updating user auth metadata:', authError.message);
+      return { error: `Failed to update user role in auth: ${authError.message}` };
+    }
+  
+    // Update role in profiles table
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .update({ role: role })
+      .eq('id', userId);
+  
+    if (profileError) {
+      console.error('Error updating profile role:', profileError.message);
+      return { error: `Failed to update user role in profile: ${profileError.message}` };
+    }
+  
+    revalidatePath('/(dashboard)/admin/users');
+  
+    return { data: user, message: 'User role updated successfully!' };
+}
+  
+export async function deleteUser(userId: string) {
+    const supabaseAdmin = createAdminClient();
+
+    // The trigger `delete_user_profile_on_auth_user_delete` in schema.sql
+    // should automatically delete the corresponding profile.
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+    if (error) {
+        console.error('Error deleting user:', error.message);
+        return { error: `Failed to delete user: ${error.message}` };
+    }
+
+    revalidatePath('/(dashboard)/admin/users');
+
+    return { message: 'User deleted successfully!' };
 }
