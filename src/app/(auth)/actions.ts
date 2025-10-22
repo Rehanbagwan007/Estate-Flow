@@ -4,25 +4,23 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { loginSchema, signupSchema } from '@/schemas';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 
 export async function login(values: z.infer<typeof loginSchema>) {
-  const supabase = createClient();
-  const { data, error } = await supabase.auth.signInWithPassword(values);
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+  const { error } = await supabase.auth.signInWithPassword(values);
 
   if (error) {
-    return { error: error.message };
+    return redirect(`/login?message=${error.message}`);
   }
   
-  if (data.user) {
-    // Return success instead of redirecting from the server action
-    return { success: true };
-  }
-  
-  return { error: 'Login failed' };
+  return redirect('/');
 }
 
 export async function signup(values: z.infer<typeof signupSchema>) {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
   const { data, error } = await supabase.auth.signUp({
     email: values.email,
     password: values.password,

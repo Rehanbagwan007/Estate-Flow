@@ -14,15 +14,17 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
 import { login } from '@/app/(auth)/actions';
 import Link from 'next/link';
 import { useTransition } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 export function LoginForm() {
-  const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const searchParams = useSearchParams();
+  const errorMessage = searchParams.get('message');
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -34,25 +36,19 @@ export function LoginForm() {
 
   function onSubmit(values: z.infer<typeof loginSchema>) {
     startTransition(async () => {
-      const result = await login(values);
-      if (result?.error) {
-        toast({
-          title: 'Login Failed',
-          description: result.error,
-          variant: 'destructive',
-        });
-      }
-      
-      if (result?.success) {
-        // Redirect from the client-side after the server action is complete
-        window.location.href = '/';
-      }
+      await login(values);
     });
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {errorMessage && (
+            <Alert variant="destructive">
+                <AlertTitle>Login Failed</AlertTitle>
+                <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+        )}
         <div className="space-y-4">
           <FormField
             control={form.control}
