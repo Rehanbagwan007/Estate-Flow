@@ -57,17 +57,16 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         return { error: 'User was not created in Auth.' };
     }
 
-    // Step 2: Manually insert the profile with a 'pending' status
-    // The handle_new_user trigger is helpful but we need to control the initial status.
+    // The `handle_new_user` trigger in `0002_extend_schema_for_crm.sql` will create the profile.
+    // We now need to update it to set the approval_status correctly.
+
+    // Step 2: Set the approval status based on the role.
+    const is_admin_role = ['super_admin', 'admin'].includes(values.role);
+    
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({
-        first_name: values.firstName,
-        last_name: values.lastName,
-        email: values.email,
-        phone: values.phone,
-        role: values.role,
-        approval_status: 'pending', // **CRITICAL FIX**: Set initial status
+        approval_status: is_admin_role ? 'approved' : 'pending',
       })
       .eq('id', user.id);
 

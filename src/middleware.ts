@@ -43,12 +43,15 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const publicRoutes = ['/login'];
+  // Define public routes that do not require authentication
+  const publicRoutes = ['/login', '/signup'];
 
+  // If user is logged in and trying to access a public route, redirect to dashboard
   if (user && publicRoutes.includes(pathname)) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
+  // If user is not logged in and trying to access a protected route, redirect to login
   if (!user && !publicRoutes.includes(pathname)) {
     // Allow access to root only to redirect, everything else needs login
     if (pathname === '/') return response;
@@ -58,18 +61,25 @@ export async function middleware(request: NextRequest) {
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('approval_status')
+      .select('role, approval_status')
       .eq('id', user.id)
       .single();
 
-    const isApproved = profile?.approval_status === 'approved';
-    const onPendingPage = pathname.startsWith('/pending-approval');
+    // ** FIX: Admins should not be subject to approval checks **
+    if (profile && !['super_admin', 'admin'].includes(profile.role)) {
+        const isApproved = profile.approval_status === 'approved';
+        const onPendingPage = pathname.startsWith('/pending-approval');
 
-    if (!isApproved && !onPendingPage) {
-        return NextResponse.redirect(new URL('/pending-approval', request.url));
-    }
-    if (isApproved && onPendingPage) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
+        if (!isApproved && !onPendingPage) {
+            return NextResponse.redirect(new URL('/pending-approval', request.url));
+        }
+        if (isApproved && onPendingPage) {
+            return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
+    } else if (!profile) {
+      // This case might happen if profile creation is delayed.
+      // Redirecting to login is a safe fallback.
+      return NextResponse.redirect(new URL('/login?message=Profile not found. Please try again.', request.url));
     }
   }
 
