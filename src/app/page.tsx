@@ -1,7 +1,18 @@
 import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 
-export default function RootPage() {
-  // The middleware ensures the user is logged in and will redirect to /login if not.
-  // We can safely redirect to the main dashboard route.
-  redirect('/dashboard');
+export default async function RootPage() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect('/dashboard');
+  } else {
+    redirect('/login');
+  }
 }
