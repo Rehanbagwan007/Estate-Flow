@@ -1,237 +1,362 @@
--- Extend user roles to include all required roles
-ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'super_admin';
-ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'caller_1';
-ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'caller_2';
-ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'sales_manager';
-ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'sales_executive_1';
-ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'sales_executive_2';
-ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'customer';
+-- 1. Create custom types
+create type public.user_role as enum ('super_admin', 'admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2', 'customer');
+create type public.property_status as enum ('Available', 'Sold', 'Rented', 'Upcoming');
+create type public.property_type as enum ('Residential', 'Commercial', 'Land');
+create type public.lead_status as enum ('Hot', 'Warm', 'Cold');
+create type public.task_status as enum ('Todo', 'InProgress', 'Done');
+create type public.interest_level as enum ('interested', 'very_interested', 'ready_to_buy');
+create type public.interest_status as enum ('pending', 'assigned', 'contacted', 'meeting_scheduled', 'completed', 'cancelled');
+create type public.appointment_status as enum ('scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show');
+create type public.call_type as enum ('inbound', 'outbound');
+create type public.call_status as enum ('initiated', 'ringing', 'answered', 'completed', 'failed', 'busy', 'no_answer');
+create type public.assignment_type as enum ('property_interest', 'follow_up', 'cold_call', 'meeting');
+create type public.assignment_priority as enum ('low', 'medium', 'high', 'urgent');
+create type public.assignment_status as enum ('assigned', 'accepted', 'in_progress', 'completed', 'cancelled');
+create type public.visit_type as enum ('property_visit', 'customer_meeting', 'site_inspection', 'follow_up');
+create type public.notification_type as enum ('property_interest', 'appointment_reminder', 'call_reminder', 'approval_status', 'task_assigned', 'meeting_scheduled');
+create type public.notification_channel as enum ('app', 'email', 'whatsapp', 'sms');
+create type public.integration_type as enum ('exotel', 'whatsapp', 'olx', '99acres', 'facebook', 'instagram');
 
--- Add approval status to profiles
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected'));
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS approved_by UUID REFERENCES auth.users(id);
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITH TIME ZONE;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN DEFAULT FALSE;
-
--- Create property interests table
-CREATE TABLE IF NOT EXISTS property_interests (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-    customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    interest_level VARCHAR(20) DEFAULT 'interested' CHECK (interest_level IN ('interested', 'very_interested', 'ready_to_buy')),
-    message TEXT,
-    preferred_meeting_time TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'assigned', 'contacted', 'meeting_scheduled', 'completed', 'cancelled'))
+-- 2. Create profiles table
+create table if not exists public.profiles (
+  id uuid not null references auth.users on delete cascade,
+  first_name text,
+  last_name text,
+  email text unique,
+  phone text unique,
+  role public.user_role not null default 'customer',
+  approval_status text default 'pending', -- pending, approved, rejected
+  approved_by uuid references public.profiles(id),
+  approved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.profiles enable row level security;
+create policy "Public profiles are viewable by everyone." on profiles for select using (true);
+create policy "Users can insert their own profile." on profiles for insert with check (auth.uid() = id);
+create policy "Users can update their own profile." on profiles for update using (auth.uid() = id);
+create policy "Admins can update any profile" on profiles for update to authenticated with check (
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
 );
 
--- Create appointments table
-CREATE TABLE IF NOT EXISTS appointments (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    property_interest_id UUID NOT NULL REFERENCES property_interests(id) ON DELETE CASCADE,
-    customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    agent_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    scheduled_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    duration_minutes INTEGER DEFAULT 60,
-    location VARCHAR(255),
-    notes TEXT,
-    status VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- 3. Create properties table
+create table if not exists public.properties (
+  id uuid not null default gen_random_uuid(),
+  title text not null,
+  description text,
+  address text not null,
+  city text not null,
+  state text not null,
+  zip_code text not null,
+  price numeric not null,
+  bedrooms numeric,
+  bathrooms numeric,
+  area_sqft numeric,
+  property_type public.property_type not null default 'Residential',
+  status public.property_status not null default 'Available',
+  owner_name text,
+  owner_contact text,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (id)
 );
 
--- Create call logs table
-CREATE TABLE IF NOT EXISTS call_logs (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    call_id VARCHAR(255) UNIQUE NOT NULL, -- Exotel call ID
-    agent_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
-    call_type VARCHAR(20) DEFAULT 'outbound' CHECK (call_type IN ('inbound', 'outbound')),
-    call_status VARCHAR(20) DEFAULT 'initiated' CHECK (call_status IN ('initiated', 'ringing', 'answered', 'completed', 'failed', 'busy', 'no_answer')),
-    duration_seconds INTEGER DEFAULT 0,
-    recording_url TEXT,
-    recording_duration_seconds INTEGER,
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+alter table public.properties enable row level security;
+create policy "Properties are viewable by authenticated users." on public.properties for select to authenticated using (true);
+create policy "Agents and admins can create properties." on public.properties for insert with check (
+  (select role from public.profiles where id = auth.uid()) in ('agent', 'admin', 'super_admin')
+);
+create policy "Property creator or admins can update." on public.properties for update using (
+  auth.uid() = created_by or 
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
+);
+create policy "Property creator or admins can delete." on public.properties for delete using (
+  auth.uid() = created_by or 
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
 );
 
--- Create field visits table for GPS tracking
-CREATE TABLE IF NOT EXISTS field_visits (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    agent_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
-    visit_type VARCHAR(20) DEFAULT 'property_visit' CHECK (visit_type IN ('property_visit', 'customer_meeting', 'site_inspection', 'follow_up')),
-    latitude DECIMAL(10, 8),
-    longitude DECIMAL(11, 8),
-    address TEXT,
-    visit_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    duration_minutes INTEGER,
-    notes TEXT,
-    photos TEXT[], -- Array of photo URLs
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+-- 4. Create property_media table
+create table if not exists public.property_media (
+  id uuid not null default gen_random_uuid(),
+  property_id uuid references public.properties(id) on delete cascade,
+  file_path text not null,
+  file_type text,
+  created_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.property_media enable row level security;
+create policy "Property media is viewable by authenticated users." on public.property_media for select to authenticated using (true);
+create policy "Agents and admins can insert media." on public.property_media for insert with check (
+  (select role from public.profiles where id = auth.uid()) in ('agent', 'admin', 'super_admin')
+);
+create policy "Media creator or admins can update." on public.property_media for update using (
+  exists (select 1 from properties where properties.id = property_id and properties.created_by = auth.uid()) or
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
+);
+create policy "Media creator or admins can delete." on public.property_media for delete using (
+  exists (select 1 from properties where properties.id = property_id and properties.created_by = auth.uid()) or
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
 );
 
--- Create notifications table
-CREATE TABLE IF NOT EXISTS notifications (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    type VARCHAR(50) NOT NULL CHECK (type IN ('property_interest', 'appointment_reminder', 'call_reminder', 'approval_status', 'task_assigned', 'meeting_scheduled')),
-    title VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
-    data JSONB, -- Additional data for the notification
-    is_read BOOLEAN DEFAULT FALSE,
-    sent_via VARCHAR(20) DEFAULT 'app' CHECK (sent_via IN ('app', 'email', 'whatsapp', 'sms')),
-    sent_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+-- 5. Create property_interests table
+create table if not exists public.property_interests (
+  id uuid not null default gen_random_uuid(),
+  property_id uuid not null references public.properties(id) on delete cascade,
+  customer_id uuid not null references public.profiles(id) on delete cascade,
+  interest_level public.interest_level not null default 'interested',
+  status public.interest_status not null default 'pending',
+  message text,
+  preferred_meeting_time timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.property_interests enable row level security;
+create policy "Customers can manage their own interests." on public.property_interests for all using (auth.uid() = customer_id);
+create policy "Admins and assigned agents can view interests." on public.property_interests for select using (
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin') or
+  exists (select 1 from agent_assignments where agent_assignments.property_interest_id = public.property_interests.id and agent_assignments.agent_id = auth.uid())
+);
+create policy "Admins can update interests." on public.property_interests for update using (
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
 );
 
--- Create integration settings table
-CREATE TABLE IF NOT EXISTS integration_settings (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    integration_type VARCHAR(50) NOT NULL CHECK (integration_type IN ('exotel', 'whatsapp', 'olx', '99acres', 'facebook', 'instagram')),
-    settings JSONB NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- 6. Create leads table
+create table if not exists public.leads (
+  id uuid not null default gen_random_uuid(),
+  first_name text not null,
+  last_name text,
+  email text,
+  phone text,
+  status public.lead_status not null default 'Warm',
+  assigned_to uuid references public.profiles(id),
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.leads enable row level security;
+create policy "Leads can be managed by admins and assigned agents." on public.leads for all using (
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin') or
+  assigned_to = auth.uid()
 );
 
--- Create agent assignments table
-CREATE TABLE IF NOT EXISTS agent_assignments (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    agent_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    property_interest_id UUID REFERENCES property_interests(id) ON DELETE SET NULL,
-    assigned_by UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    assignment_type VARCHAR(20) DEFAULT 'property_interest' CHECK (assignment_type IN ('property_interest', 'follow_up', 'cold_call', 'meeting')),
-    priority VARCHAR(10) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
-    status VARCHAR(20) DEFAULT 'assigned' CHECK (status IN ('assigned', 'accepted', 'in_progress', 'completed', 'cancelled')),
-    notes TEXT,
-    due_date TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- 7. Create tasks table
+create table if not exists public.tasks (
+  id uuid not null default gen_random_uuid(),
+  title text not null,
+  description text,
+  status public.task_status not null default 'Todo',
+  due_date timestamptz,
+  assigned_to uuid references public.profiles(id),
+  created_by uuid references auth.users(id),
+  related_lead_id uuid references public.leads(id),
+  related_property_id uuid references public.properties(id),
+  created_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.tasks enable row level security;
+create policy "Tasks can be managed by admins and assigned users." on public.tasks for all using (
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin') or
+  assigned_to = auth.uid() or
+  created_by = auth.uid()
 );
 
--- Add indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_property_interests_property_id ON property_interests(property_id);
-CREATE INDEX IF NOT EXISTS idx_property_interests_customer_id ON property_interests(customer_id);
-CREATE INDEX IF NOT EXISTS idx_property_interests_status ON property_interests(status);
-CREATE INDEX IF NOT EXISTS idx_appointments_agent_id ON appointments(agent_id);
-CREATE INDEX IF NOT EXISTS idx_appointments_customer_id ON appointments(customer_id);
-CREATE INDEX IF NOT EXISTS idx_appointments_scheduled_at ON appointments(scheduled_at);
-CREATE INDEX IF NOT EXISTS idx_call_logs_agent_id ON call_logs(agent_id);
-CREATE INDEX IF NOT EXISTS idx_call_logs_customer_id ON call_logs(customer_id);
-CREATE INDEX IF NOT EXISTS idx_call_logs_created_at ON call_logs(created_at);
-CREATE INDEX IF NOT EXISTS idx_field_visits_agent_id ON field_visits(agent_id);
-CREATE INDEX IF NOT EXISTS idx_field_visits_visit_date ON field_visits(visit_date);
-CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
-CREATE INDEX IF NOT EXISTS idx_agent_assignments_agent_id ON agent_assignments(agent_id);
-CREATE INDEX IF NOT EXISTS idx_agent_assignments_customer_id ON agent_assignments(customer_id);
-CREATE INDEX IF NOT EXISTS idx_agent_assignments_status ON agent_assignments(status);
+-- 8. Create appointments table
+create table if not exists public.appointments (
+  id uuid not null default gen_random_uuid(),
+  property_interest_id uuid not null references public.property_interests(id) on delete cascade,
+  customer_id uuid not null references public.profiles(id) on delete cascade,
+  agent_id uuid not null references public.profiles(id) on delete cascade,
+  scheduled_at timestamptz not null,
+  duration_minutes integer,
+  location text,
+  notes text,
+  status public.appointment_status not null default 'scheduled',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.appointments enable row level security;
+create policy "Users can manage their own appointments." on public.appointments for all using (
+  auth.uid() = customer_id or auth.uid() = agent_id or
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
+);
 
--- Add RLS policies for new tables
-ALTER TABLE property_interests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE call_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE field_visits ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE integration_settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE agent_assignments ENABLE ROW LEVEL SECURITY;
+-- 9. Create call_logs table
+create table if not exists public.call_logs (
+  id uuid not null default gen_random_uuid(),
+  call_id text not null, -- From Exotel or other provider
+  agent_id uuid not null references public.profiles(id) on delete cascade,
+  customer_id uuid references public.profiles(id) on delete cascade,
+  property_id uuid references public.properties(id),
+  call_type public.call_type not null default 'outbound',
+  call_status public.call_status not null default 'initiated',
+  duration_seconds integer,
+  recording_url text,
+  recording_duration_seconds integer,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.call_logs enable row level security;
+create policy "Users can see their own call logs." on public.call_logs for select using (
+  auth.uid() = agent_id or auth.uid() = customer_id
+);
+create policy "Admins can see all call logs." on public.call_logs for select using (
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
+);
+create policy "Agents can create call logs." on public.call_logs for insert with check (
+  auth.uid() = agent_id
+);
 
--- Property interests policies
-CREATE POLICY "Users can view their own property interests" ON property_interests
-    FOR SELECT USING (customer_id = auth.uid());
+-- 10. Create agent_assignments table
+create table if not exists public.agent_assignments (
+  id uuid not null default gen_random_uuid(),
+  property_interest_id uuid references public.property_interests(id),
+  agent_id uuid not null references public.profiles(id),
+  customer_id uuid not null references public.profiles(id),
+  assigned_by uuid not null references public.profiles(id),
+  assignment_type public.assignment_type not null default 'property_interest',
+  priority public.assignment_priority not null default 'medium',
+  status public.assignment_status not null default 'assigned',
+  notes text,
+  due_date timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.agent_assignments enable row level security;
+create policy "Admins can manage assignments." on public.agent_assignments for all using (
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
+);
+create policy "Assigned agents can view their assignments." on public.agent_assignments for select using (
+  auth.uid() = agent_id
+);
 
-CREATE POLICY "Admins and agents can view all property interests" ON property_interests
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM profiles 
-            WHERE id = auth.uid() 
-            AND role IN ('admin', 'super_admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2')
-        )
-    );
+-- 11. Create field_visits table
+create table if not exists public.field_visits (
+  id uuid not null default gen_random_uuid(),
+  agent_id uuid not null references public.profiles(id),
+  property_id uuid references public.properties(id),
+  visit_date timestamptz not null,
+  visit_type public.visit_type not null default 'property_visit',
+  latitude numeric,
+  longitude numeric,
+  address text,
+  duration_minutes integer,
+  notes text,
+  photos text[],
+  created_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.field_visits enable row level security;
+create policy "Agents can manage their own field visits." on public.field_visits for all using (
+  auth.uid() = agent_id
+);
+create policy "Admins can view all field visits." on public.field_visits for select using (
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
+);
 
-CREATE POLICY "Customers can create property interests" ON property_interests
-    FOR INSERT WITH CHECK (
-        customer_id = auth.uid() AND
-        EXISTS (
-            SELECT 1 FROM profiles 
-            WHERE id = auth.uid() 
-            AND role = 'customer' 
-            AND approval_status = 'approved'
-        )
-    );
+-- 12. Create notifications table
+create table if not exists public.notifications (
+  id uuid not null default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id),
+  type public.notification_type not null,
+  title text not null,
+  message text not null,
+  is_read boolean default false,
+  data jsonb,
+  sent_at timestamptz,
+  sent_via public.notification_channel not null default 'app',
+  created_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.notifications enable row level security;
+create policy "Users can manage their own notifications." on public.notifications for all using (auth.uid() = user_id);
 
--- Appointments policies
-CREATE POLICY "Users can view their own appointments" ON appointments
-    FOR SELECT USING (customer_id = auth.uid() OR agent_id = auth.uid());
+-- 13. Create integration_settings table
+create table if not exists public.integration_settings (
+  id uuid not null default gen_random_uuid(),
+  integration_type public.integration_type not null,
+  settings jsonb not null,
+  is_active boolean default true,
+  created_by uuid references public.profiles(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.integration_settings enable row level security;
+create policy "Admins can manage integrations." on public.integration_settings for all using (
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
+);
 
-CREATE POLICY "Admins can view all appointments" ON appointments
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM profiles 
-            WHERE id = auth.uid() 
-            AND role IN ('admin', 'super_admin')
-        )
-    );
+-- 14. Create property_shares table
+create table if not exists public.property_shares (
+  id uuid not null default gen_random_uuid(),
+  property_id uuid not null references public.properties(id) on delete cascade,
+  platform public.integration_type not null,
+  post_url text not null,
+  created_at timestamptz not null default now(),
+  primary key (id)
+);
+alter table public.property_shares enable row level security;
+create policy "Shares are viewable by admins." on public.property_shares for select using (
+  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
+);
 
--- Call logs policies
-CREATE POLICY "Agents can view their own call logs" ON call_logs
-    FOR SELECT USING (agent_id = auth.uid());
+-- Trigger function to create profile on new user signup
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, first_name, last_name, email, role, phone)
+  values (
+    new.id,
+    new.raw_user_meta_data->>'first_name',
+    new.raw_user_meta_data->>'last_name',
+    new.email,
+    (new.raw_user_meta_data->>'role')::public.user_role,
+    new.raw_user_meta_data->>'phone'
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
 
-CREATE POLICY "Admins can view all call logs" ON call_logs
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM profiles 
-            WHERE id = auth.uid() 
-            AND role IN ('admin', 'super_admin')
-        )
-    );
+-- Trigger to call the function
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
 
--- Field visits policies
-CREATE POLICY "Agents can view their own field visits" ON field_visits
-    FOR SELECT USING (agent_id = auth.uid());
+-- Trigger to delete profile when auth user is deleted
+create or replace function public.delete_user_profile()
+returns trigger as $$
+begin
+  delete from public.profiles where id = old.id;
+  return old;
+end;
+$$ language plpgsql security definer;
 
-CREATE POLICY "Admins can view all field visits" ON field_visits
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM profiles 
-            WHERE id = auth.uid() 
-            AND role IN ('admin', 'super_admin')
-        )
-    );
-
--- Notifications policies
-CREATE POLICY "Users can view their own notifications" ON notifications
-    FOR SELECT USING (user_id = auth.uid());
-
-CREATE POLICY "Users can update their own notifications" ON notifications
-    FOR UPDATE USING (user_id = auth.uid());
-
--- Agent assignments policies
-CREATE POLICY "Agents can view their own assignments" ON agent_assignments
-    FOR SELECT USING (agent_id = auth.uid());
-
-CREATE POLICY "Admins can view all assignments" ON agent_assignments
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM profiles 
-            WHERE id = auth.uid() 
-            AND role IN ('admin', 'super_admin', 'sales_manager')
-        )
-    );
-
--- Integration settings policies (admin only)
-CREATE POLICY "Only admins can manage integration settings" ON integration_settings
-    FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM profiles 
-            WHERE id = auth.uid() 
-            AND role IN ('admin', 'super_admin')
-        )
-    );
+drop trigger if exists on_auth_user_deleted on auth.users;
+create trigger on_auth_user_deleted
+  after delete on auth.users
+  for each row execute procedure public.delete_user_profile();
+  
+-- Enable RLS for all tables
+alter table public.profiles enable row level security;
+alter table public.leads enable row level security;
+alter table public.tasks enable row level security;
+alter table public.property_media enable row level security;
+alter table public.property_interests enable row level security;
+alter table public.appointments enable row level security;
+alter table public.call_logs enable row level security;
+alter table public.agent_assignments enable row level security;
+alter table public.field_visits enable row level security;
+alter table public.notifications enable row level security;
+alter table public.integration_settings enable row level security;
+alter table public.property_shares enable row level security;
