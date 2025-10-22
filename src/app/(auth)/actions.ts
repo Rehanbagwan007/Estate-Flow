@@ -14,7 +14,8 @@ export async function login(values: z.infer<typeof loginSchema>) {
   }
   
   if (data.user) {
-    redirect('/');
+    // Return success instead of redirecting from the server action
+    return { success: true };
   }
   
   return { error: 'Login failed' };

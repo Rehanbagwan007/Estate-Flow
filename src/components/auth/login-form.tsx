@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { login } from '@/app/(auth)/actions';
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useTransition } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export function LoginForm() {
@@ -34,18 +34,18 @@ export function LoginForm() {
 
   function onSubmit(values: z.infer<typeof loginSchema>) {
     startTransition(async () => {
-      try {
-        const result = await login(values);
-        if (result?.error) {
-          toast({
-            title: 'Login Failed',
-            description: result.error,
-            variant: 'destructive',
-          });
-        }
-      } catch (error) {
-        // This might happen if redirect occurs, which is expected
-        console.log('Login successful, redirecting...');
+      const result = await login(values);
+      if (result?.error) {
+        toast({
+          title: 'Login Failed',
+          description: result.error,
+          variant: 'destructive',
+        });
+      }
+      
+      if (result?.success) {
+        // Redirect from the client-side after the server action is complete
+        window.location.href = '/';
       }
     });
   }
