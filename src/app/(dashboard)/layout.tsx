@@ -2,25 +2,18 @@ import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // The middleware now handles redirecting unauthenticated users.
-  // If we reach this point, we can assume a user exists.
-  // If for some reason the user doesn't exist, it's a critical error state.
   if (!user) {
-    // This should theoretically be unreachable due to middleware.
-    // But as a fallback, redirect to login.
     return redirect('/login');
   }
 
@@ -30,8 +23,6 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .single();
   
-  // If the profile doesn't exist after a successful login, this is a critical data issue.
-  // Log the user out to prevent further errors and force a clean slate.
   if (!profile) {
     await supabase.auth.signOut();
     return redirect('/login?message=Profile not found. Please log in again.');

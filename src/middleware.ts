@@ -1,31 +1,14 @@
-import { type NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-
+import { type NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const { supabase, response } = createClient(request)
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refresh session if expired - required for Server Components
+  // https://supabase.com/docs/guides/auth/auth-helpers/nextjs#managing-session-with-middleware
+  await supabase.auth.getSession()
 
-  const { pathname } = request.nextUrl;
-
-  // If user is not logged in and is trying to access a protected route, redirect to login
-  if (!user && pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  // If user is logged in and tries to access the login page, redirect to dashboard
-  if (user && pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  // Refresh session
-  const response = NextResponse.next();
-  return response;
+  return response
 }
 
 export const config = {
@@ -39,4 +22,4 @@ export const config = {
      */
     '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-};
+}

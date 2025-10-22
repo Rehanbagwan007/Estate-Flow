@@ -2,12 +2,9 @@ import { LoginForm } from '@/components/auth/login-form';
 import { Logo } from '@/components/icons/logo';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
-
 
 export default async function LoginPage() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const {
     data: { user },

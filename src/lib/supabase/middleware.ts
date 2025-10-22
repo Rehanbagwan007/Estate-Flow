@@ -1,14 +1,16 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
+import type { Database } from '@/lib/types'
 
-export async function updateSession(request: NextRequest) {
+export const createClient = (request: NextRequest) => {
+  // Create an unmodified response
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -17,6 +19,7 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
+          // If the cookie is set, update the request cookies and response cookies
           request.cookies.set({
             name,
             value,
@@ -34,6 +37,7 @@ export async function updateSession(request: NextRequest) {
           })
         },
         remove(name: string, options: CookieOptions) {
+          // If the cookie is removed, update the request cookies and response cookies
           request.cookies.set({
             name,
             value: '',
@@ -54,8 +58,5 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // refreshing the session cookie
-  await supabase.auth.getUser()
-
-  return response
+  return { supabase, response }
 }

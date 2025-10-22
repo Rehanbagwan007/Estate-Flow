@@ -1,7 +1,13 @@
-import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
-// The middleware now handles routing, so this page can simply redirect
-// to the most logical starting point.
 export default async function RootPage() {
-  redirect('/dashboard');
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (user) {
+    redirect('/dashboard')
+  } else {
+    redirect('/login')
+  }
 }
