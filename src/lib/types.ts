@@ -11,6 +11,7 @@ export type Database = MergeDeep<
           Row: {
             // id is a primary key in profiles, referencing auth.users.id
             id: string;
+            approval_status: 'approved' | 'rejected' | 'pending';
             role:
               | 'super_admin'
               | 'admin'

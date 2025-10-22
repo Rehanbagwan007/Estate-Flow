@@ -10,8 +10,10 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // The layout already handles the redirect if there is no user.
   if (!user) {
-    redirect('/login');
+    // This should theoretically not be reached because of the layout's protection
+    return redirect('/login');
   }
 
   const { data: profile } = await supabase
@@ -20,10 +22,11 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
+  // The layout has also handled the case of a missing profile.
   if (!profile) {
-    // This can happen in a race condition right after signup, but since admin creates users,
-    // it's more likely an error. Safest place to go is login.
-    redirect('/login?message=Profile not found.');
+    // This should also not be reached
+    await supabase.auth.signOut();
+    return redirect('/login?message=Profile not found. Please log in again.');
   }
 
   // Render the role-specific dashboard.
