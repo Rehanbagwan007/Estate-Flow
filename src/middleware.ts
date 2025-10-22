@@ -60,15 +60,36 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const isAuthRoute = pathname === '/login';
+  // This is a fix for a redirect loop that was happening when a user was not approved
+  if (user && pathname.startsWith('/pending-approval')) {
+    return response;
+  }
+  
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('approval_status')
+      .eq('id', user.id)
+      .single();
 
-  // If user is logged in and tries to access the login page, redirect to home.
+    if (profile?.approval_status === 'pending' && !pathname.startsWith('/pending-approval')) {
+        return NextResponse.redirect(new URL('/pending-approval', request.url));
+    }
+    if (profile?.approval_status === 'approved' && pathname.startsWith('/pending-approval')) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
+
+
+  const isAuthRoute = pathname === '/login' || pathname === '/signup';
+
+  // If user is logged in and tries to access an auth route, redirect to home.
   if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   // If user is not logged in and is trying to access a protected route, redirect to login.
-  if (!user && !isAuthRoute) {
+  if (!user && !isAuthRoute && !pathname.startsWith('/pending-approval')) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
