@@ -3,16 +3,19 @@ import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+  
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect('/login');
@@ -33,6 +36,8 @@ export default async function DashboardLayout({
 
   const isAdmin = ['super_admin', 'admin'].includes(profile.role);
 
+  // If the user is not an admin and their account is not approved,
+  // redirect them to the pending approval page.
   if (!isAdmin && profile.approval_status !== 'approved') {
     redirect('/pending-approval');
   }

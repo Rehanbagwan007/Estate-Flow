@@ -1,16 +1,8 @@
 
-import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
 export default async function RootPage() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (session) {
-    redirect('/dashboard');
-  } else {
-    redirect('/login');
-  }
+  // Always redirect from the root to the dashboard.
+  // The dashboard layout and middleware will handle authentication.
+  redirect('/dashboard');
 }
