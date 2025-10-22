@@ -1,7 +1,8 @@
-import DashboardPage from "@/app/(dashboard)/dashboard/page";
+import { redirect } from 'next/navigation';
 
 export default function RootPage() {
-  // Directly render the dashboard page content. 
-  // The DashboardPage component itself will handle any necessary redirects.
-  return <DashboardPage />;
+  // The middleware ensures the user is logged in.
+  // We redirect to the main dashboard route, which is inside the (dashboard)
+  // layout group, ensuring the sidebar and header are always present.
+  redirect('/dashboard');
 }
