@@ -11,7 +11,7 @@ export type Database = MergeDeep<
           Row: {
             // id is a primary key in profiles, referencing auth.users.id
             id: string;
-            approval_status: 'pending' | 'approved' | 'rejected' | null;
+            approval_status: 'pending' | 'approved' | 'rejected';
             role:
               | 'super_admin'
               | 'admin'
@@ -59,7 +59,7 @@ export type VisitType = FieldVisit['visit_type'];
 export type NotificationType = Notification['type'];
 export type NotificationChannel = Notification['sent_via'];
 export type IntegrationType = IntegrationSetting['integration_type'];
-export type AssignmentType = AgentAssignment['assignment_type'];
+export type AssignmentType = Assignment['assignment_type'];
 export type AssignmentPriority = AgentAssignment['priority'];
 export type AssignmentStatus = AgentAssignment['status'];
 export type PropertyType = Property['property_type'];
