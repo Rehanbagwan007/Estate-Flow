@@ -1,7 +1,13 @@
-import { RoleDashboard } from '@/components/dashboard/role-dashboard';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
+import { SuperAdminDashboard } from '@/components/dashboard/super-admin-dashboard';
+import { AdminDashboard } from '@/components/dashboard/admin-dashboard';
+import { AgentDashboard } from '@/components/dashboard/agent-dashboard';
+import { CustomerDashboard } from '@/components/dashboard/customer-dashboard';
+import { CallerDashboard } from '@/components/dashboard/caller-dashboard';
+import { SalesManagerDashboard } from '@/components/dashboard/sales-manager-dashboard';
+import { SalesExecutiveDashboard } from '@/components/dashboard/sales-executive-dashboard';
 
 export default async function DashboardPage() {
   const cookieStore = cookies();
@@ -21,11 +27,35 @@ export default async function DashboardPage() {
     .single();
 
   if (!profile) {
-    // This can happen in a race condition right after signup, but since admin creates users,
-    // it's more likely an error. Safest place to go is login.
-    redirect('/login?message=Profile not found.');
+    // This can happen in a race condition right after signup.
+    // Safest place to go is login, with a message.
+    return redirect('/login?message=Profile not found. Please try logging in again.');
   }
 
-  // Render the role-specific dashboard.
-  return <RoleDashboard userRole={profile.role} userId={user.id} />;
+  const renderDashboard = () => {
+    switch (profile.role) {
+      case 'super_admin':
+        return <SuperAdminDashboard userId={user.id} />;
+      case 'admin':
+        return <AdminDashboard userId={user.id} />;
+      case 'agent':
+        return <AgentDashboard userId={user.id} />;
+      case 'caller_1':
+      case 'caller_2':
+        return <CallerDashboard userId={user.id} />;
+      case 'sales_manager':
+        return <SalesManagerDashboard userId={user.id} />;
+      case 'sales_executive_1':
+      case 'sales_executive_2':
+        return <SalesExecutiveDashboard userId={user.id} />;
+      case 'customer':
+        return <CustomerDashboard userId={user.id} />;
+      default:
+        console.warn(`Unhandled user role: ${profile.role}. Redirecting to login.`);
+        redirect('/login');
+        return null; // Should be unreachable
+    }
+  };
+
+  return <>{renderDashboard()}</>;
 }

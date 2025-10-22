@@ -15,8 +15,8 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface EnrichedInterest extends PropertyInterest {
-    property: Property | null;
-    customer: Profile | null;
+    properties: Property | null;
+    profiles: Profile | null;
 }
   
 interface AssignAgentDialogProps {
@@ -95,14 +95,14 @@ export function AssignAgentDialog({ interest, isOpen, onClose, onSuccess }: Assi
         <DialogHeader>
           <DialogTitle>Assign Agent & Create Task</DialogTitle>
           <DialogDescription>
-            Assign a team member to follow up on the interest for: <span className="font-semibold">{interest.property?.title}</span>
+            Assign a team member to follow up on the interest for: <span className="font-semibold">{interest.properties?.title}</span>
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
             <div className="space-y-2">
                 <Label>Customer</Label>
-                <p className="text-sm font-medium">{interest.customer?.first_name} {interest.customer?.last_name}</p>
-                <p className="text-sm text-muted-foreground">{interest.customer?.email}</p>
+                <p className="text-sm font-medium">{interest.profiles?.first_name} {interest.profiles?.last_name}</p>
+                <p className="text-sm text-muted-foreground">{interest.profiles?.email}</p>
                 {interest.preferred_meeting_time && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3" />

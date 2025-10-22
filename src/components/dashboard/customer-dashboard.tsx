@@ -14,7 +14,6 @@ import {
   DollarSign,
   Search,
   Filter,
-  Loader2,
   Eye
 } from 'lucide-react';
 import type { Property, PropertyInterest, Appointment, Profile } from '@/lib/types';
@@ -23,50 +22,58 @@ import { usePropertyStore } from '@/lib/store/property-store';
 import { useAppointmentStore } from '@/lib/store/appointment-store';
 import Image from 'next/image';
 import { PropertyInterestForm } from '../properties/property-interest-form';
+import { createClient } from '@/lib/supabase/client';
+
 
 export interface EnrichedProperty extends Property {
     property_media?: { file_path: string }[];
 }
 export interface EnrichedInterest extends PropertyInterest {
-    property?: Property;
+    properties?: Property;
 }
 export interface EnrichedAppointment extends Appointment {
-    agent?: Profile;
+    profiles?: Profile;
 }
 
 interface CustomerDashboardProps {
   userId: string;
-  initialProperties: EnrichedProperty[];
-  initialMyInterests: EnrichedInterest[];
-  initialMyAppointments: EnrichedAppointment[];
 }
 
-export function CustomerDashboard({ 
-    userId, 
-    initialProperties, 
-    initialMyInterests, 
-    initialMyAppointments 
-}: CustomerDashboardProps) {
+export function CustomerDashboard({ userId }: CustomerDashboardProps) {
+  const { toast } = useToast();
   const { interests: myInterests, setInterests, addInterest } = useInterestStore();
   const { properties, setProperties } = usePropertyStore();
   const { appointments: myAppointments, setAppointments } = useAppointmentStore();
-  
-  const initialized = useRef(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!initialized.current) {
-      setInterests(initialMyInterests);
-      setProperties(initialProperties);
-      setAppointments(initialMyAppointments);
-      initialized.current = true;
-    }
-  }, [initialMyInterests, initialProperties, initialMyAppointments, setInterests, setProperties, setAppointments]);
+    const supabase = createClient();
+    const fetchData = async () => {
+        setIsLoading(true);
+        const [
+            propertiesResult,
+            myInterestsResult,
+            myAppointmentsResult
+        ] = await Promise.all([
+            supabase.from('properties').select('*, property_media(*)').eq('status', 'Available'),
+            supabase.from('property_interests').select('*, properties(*)').eq('customer_id', userId),
+            supabase.from('appointments').select('*, profiles!appointments_agent_id_fkey(*)').eq('customer_id', userId)
+        ]);
+
+        setProperties((propertiesResult.data as EnrichedProperty[]) || []);
+        setInterests((myInterestsResult.data as EnrichedInterest[]) || []);
+        setAppointments((myAppointmentsResult.data as EnrichedAppointment[]) || []);
+        setIsLoading(false);
+    };
+    fetchData();
+  }, [userId, setProperties, setInterests, setAppointments]);
+
 
   const [selectedProperty, setSelectedProperty] = useState<EnrichedProperty | null>(null);
   const [showInterestForm, setShowInterestForm] = useState(false);
 
   const handleInterestSuccess = (newInterest: PropertyInterest) => {
-    addInterest({ ...newInterest, property: selectedProperty || undefined });
+    addInterest({ ...newInterest, properties: selectedProperty || undefined });
     toast({
       title: 'Success!',
       description: 'Your interest has been submitted. Our team will contact you shortly.',
@@ -75,13 +82,15 @@ export function CustomerDashboard({
     setSelectedProperty(null);
   };
   
-  const { toast } = useToast();
-
   const totalProperties = properties.length;
   const myInterestsCount = myInterests.length;
   const upcomingAppointments = myAppointments.filter(a => 
     new Date(a.scheduled_at) > new Date() && a.status === 'scheduled'
   ).length;
+
+  if (isLoading) {
+      return <div>Loading dashboard...</div>;
+  }
 
   return (
     <div className="space-y-6">

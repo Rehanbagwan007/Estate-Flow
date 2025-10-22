@@ -43,8 +43,8 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
       .eq('id', propertyInterestId)
       .select(`
         *,
-        property:properties(title),
-        customer:profiles(first_name, last_name, phone)
+        properties(title),
+        profiles(first_name, last_name, phone)
       `)
       .single();
 
@@ -82,8 +82,8 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
     const { data: newTask, error: taskError } = await supabase
         .from('tasks')
         .insert({
-            title: `Follow up with ${interestUpdate.customer.first_name} ${interestUpdate.customer.last_name}`,
-            description: `Customer is interested in the property: ${interestUpdate.property.title}. Please contact them.`,
+            title: `Follow up with ${interestUpdate.profiles.first_name} ${interestUpdate.profiles.last_name}`,
+            description: `Customer is interested in the property: ${interestUpdate.properties.title}. Please contact them.`,
             assigned_to: agentId,
             created_by: user.id,
             status: 'Todo',
