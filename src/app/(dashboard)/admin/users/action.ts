@@ -39,7 +39,7 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         email: values.email,
         phone: values.phone,
         password: values.password,
-        email_confirm: true,
+        email_confirm: true, // Auto-confirm email
         user_metadata: {
             first_name: values.firstName,
             last_name: values.lastName,
@@ -58,10 +58,7 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
     }
     
     // Step 2: Manually create the profile in public.profiles table.
-    // This is more reliable than depending on a database trigger.
-    const isAdminRole = ['super_admin', 'admin'].includes(values.role);
-    const approvalStatus = isAdminRole ? 'approved' : 'pending';
-
+    // Set approval_status to 'approved' for everyone since the workflow is removed.
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert({
@@ -71,7 +68,7 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         email: values.email,
         phone: values.phone,
         role: values.role,
-        approval_status: approvalStatus,
+        approval_status: 'approved', // All users created by admin are approved by default.
       });
 
     if (profileError) {
@@ -145,19 +142,4 @@ export async function deleteUser(userId: string) {
     revalidatePath('/(dashboard)/admin/users');
 
     return { message: 'User deleted successfully!' };
-}
-
-export async function approveUser(userId: string) {
-    const supabaseAdmin = createAdminClient();
-    const { error } = await supabaseAdmin
-        .from('profiles')
-        .update({ approval_status: 'approved' })
-        .eq('id', userId);
-
-    if (error) {
-        console.error('Error approving user:', error.message);
-        return { error: `Failed to approve user: ${error.message}` };
-    }
-    revalidatePath('/(dashboard)/admin/users');
-    return { message: 'User approved successfully!' };
 }

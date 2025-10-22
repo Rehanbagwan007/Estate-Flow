@@ -31,16 +31,10 @@ export default async function DashboardLayout({
     // This can happen if the profile creation failed or is delayed.
     // Signing out and redirecting to login with an error is a safe fallback.
     await supabase.auth.signOut();
-    return redirect('/login?message=Profile not found. Please try logging in again.');
+    return redirect('/login?message=Profile not found. Please log in again.');
   }
-
-  const isAdmin = ['super_admin', 'admin'].includes(profile.role);
-
-  // If the user is not an admin and their account is not approved,
-  // redirect them to the pending approval page.
-  if (!isAdmin && profile.approval_status !== 'approved') {
-    return redirect('/pending-approval');
-  }
+  
+  // NOTE: All approval logic is removed. The dashboard is accessible if the profile exists.
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
