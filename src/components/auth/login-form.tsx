@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { login } from '@/app/(auth)/actions';
-import Link from 'next/link';
 import { useTransition } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -91,12 +90,6 @@ export function LoginForm() {
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Sign In
         </Button>
-        <div className="mt-4 text-center text-sm">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="underline">
-            Sign up
-          </Link>
-        </div>
       </form>
     </Form>
   );

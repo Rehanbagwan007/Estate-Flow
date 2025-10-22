@@ -21,14 +21,14 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('first_name, last_name, email, role, approval_status')
+    .select('first_name, last_name, email, role')
     .eq('id', user.id)
     .single();
   
-  // If the profile doesn't exist yet (e.g., right after signup),
-  // we can't render the sidebar/header. The dashboard page will handle the redirect.
-  // Returning children directly avoids a render error for a moment.
   if (!profile) {
+    // If the profile doesn't exist, something is wrong.
+    // The dashboard page will handle the ultimate redirect to login.
+    // Returning children prevents a render error for a moment.
     return <>{children}</>;
   }
 

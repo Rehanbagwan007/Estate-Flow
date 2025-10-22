@@ -60,17 +60,15 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const authRoutes = ['/login', '/signup'];
-  const isAuthRoute = authRoutes.includes(pathname);
-  const isPendingApprovalRoute = pathname === '/pending-approval';
+  const isAuthRoute = pathname === '/login';
 
-  // If user is logged in and tries to access an auth page, redirect to home.
+  // If user is logged in and tries to access the login page, redirect to home.
   if (user && isAuthRoute) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // If user is not logged in and is trying to access a protected route (that isn't public), redirect to login.
-  if (!user && !isAuthRoute && !isPendingApprovalRoute) {
+  // If user is not logged in and is trying to access a protected route, redirect to login.
+  if (!user && !isAuthRoute) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
   

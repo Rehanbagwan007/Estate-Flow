@@ -16,22 +16,16 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, approval_status')
+    .select('role')
     .eq('id', user.id)
     .single();
 
   if (!profile) {
-    // This can happen in a race condition right after signup.
-    // The safest place to go is the pending page, which will auto-refresh.
-    return redirect('/pending-approval');
+    // This can happen in a race condition right after signup, but since admin creates users,
+    // it's more likely an error. Safest place to go is login.
+    redirect('/login?message=Profile not found.');
   }
 
-  // This is now the single source of truth for this specific redirection.
-  // If a user is a customer and their account is not approved, send them to the pending page.
-  if (profile.role === 'customer' && profile.approval_status !== 'approved') {
-    redirect('/pending-approval');
-  }
-
-  // For all other approved users, render their specific dashboard.
+  // Render the role-specific dashboard.
   return <RoleDashboard userRole={profile.role} userId={user.id} />;
 }
