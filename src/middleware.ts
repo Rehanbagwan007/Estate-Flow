@@ -60,9 +60,9 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const isAuthRoute = pathname === '/login';
+  const isAuthRoute = pathname === '/login' || pathname === '/signup';
 
-  // If user is logged in and tries to access the login page, redirect to home.
+  // If user is logged in and tries to access an auth route, redirect to home.
   if (user && isAuthRoute) {
     return NextResponse.redirect(new URL('/', request.url));
   }
