@@ -1,3 +1,4 @@
+
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,13 +48,8 @@ export default async function MyInterestsPage() {
   const { data: interests, error } = await supabase
     .from('property_interests')
     .select(`
-      id,
-      interest_level,
-      message,
-      preferred_meeting_time,
-      status,
-      created_at,
-      property:properties (
+      *,
+      property:property_id (
         id,
         title,
         price,
