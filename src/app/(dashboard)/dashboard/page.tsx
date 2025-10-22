@@ -8,29 +8,24 @@ export default async function DashboardPage() {
   const supabase = createClient(cookieStore);
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
-  // The main layout now handles the user check, but we keep this as a safeguard.
+  // The main layout now handles the user check, so a full redirect is safe here.
   if (!user) {
     redirect('/login');
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile } = await supabase
     .from('profiles')
     .select('role, approval_status')
     .eq('id', user.id)
     .single();
-  
-  // The layout also handles this, but it's good practice for a page to be self-sufficient.
-  if (profileError || !profile) {
-      console.error('Error fetching profile on dashboard page:', { profileError, userId: user.id });
-      // This might indicate the profile is not yet created after signup.
-      // Redirecting to login might cause a loop if the user is authenticated.
-      // Let's redirect to a pending page or show an error.
-      // For now, redirecting to login is the safest, but this could be improved.
-      redirect('/login?error=profile_not_found');
+
+  // If the profile is missing after login, it's a valid reason to redirect.
+  if (!profile) {
+    return redirect('/login?error=profile_not_found');
   }
-  
+
   // The layout handles this redirection, so this is redundant but safe.
   if (profile.role === 'customer' && profile.approval_status !== 'approved') {
     redirect('/pending-approval');
