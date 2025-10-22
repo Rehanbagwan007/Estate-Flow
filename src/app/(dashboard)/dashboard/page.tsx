@@ -1,4 +1,3 @@
-
 import { RoleDashboard } from '@/components/dashboard/role-dashboard';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
@@ -11,9 +10,10 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // The layout has already handled the redirect if there is no user.
+  // The layout already handles the redirect if there is no user.
   if (!user) {
-    return null;
+    // This should theoretically not be reached because of the layout's protection
+    return redirect('/login');
   }
 
   const { data: profile } = await supabase
@@ -22,9 +22,11 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
-  // The layout has already handled the case of a missing profile.
+  // The layout has also handled the case of a missing profile.
   if (!profile) {
-    return null;
+    // This should also not be reached
+    await supabase.auth.signOut();
+    return redirect('/login?message=Profile not found. Please log in again.');
   }
 
   // Render the role-specific dashboard.

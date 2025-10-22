@@ -1,9 +1,9 @@
-
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
+import type { Profile } from '@/lib/types';
 
 export default async function DashboardLayout({
   children,
@@ -18,7 +18,7 @@ export default async function DashboardLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/login');
+    return redirect('/login');
   }
 
   const { data: profile } = await supabase
@@ -31,7 +31,7 @@ export default async function DashboardLayout({
     // This can happen if the profile creation failed or is delayed.
     // Signing out and redirecting to login with an error is a safe fallback.
     await supabase.auth.signOut();
-    redirect('/login?message=Profile not found. Please log in again.');
+    return redirect('/login?message=Profile not found. Please try logging in again.');
   }
 
   const isAdmin = ['super_admin', 'admin'].includes(profile.role);
@@ -39,14 +39,14 @@ export default async function DashboardLayout({
   // If the user is not an admin and their account is not approved,
   // redirect them to the pending approval page.
   if (!isAdmin && profile.approval_status !== 'approved') {
-    redirect('/pending-approval');
+    return redirect('/pending-approval');
   }
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <Sidebar userRole={profile.role}/>
       <div className="flex flex-col">
-        <Header user={user} profile={profile} />
+        <Header user={user} profile={profile as Profile} />
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
           {children}
         </main>
