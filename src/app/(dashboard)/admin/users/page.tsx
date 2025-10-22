@@ -163,55 +163,59 @@ export default async function AdminUsersPage() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline">{u.role}</Badge>
-                  <Dialog>
-                    <AlertDialog>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" disabled={u.id === currentUserId}>
-                                    <MoreVertical className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DialogTrigger asChild>
-                                    <DropdownMenuItem>
-                                        <Edit className="mr-2 h-4 w-4" />
-                                        Edit Role
-                                    </DropdownMenuItem>
-                                </DialogTrigger>
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className="text-destructive">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete User
-                                    </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <DialogContent className="sm:max-w-[425px]">
-                            <DialogHeader>
-                                <DialogTitle>Edit User Role</DialogTitle>
-                                <DialogDescription>
-                                    Change the role for {u.first_name} {u.last_name}.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <EditUserForm user={u} />
-                        </DialogContent>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the user account
-                                    and remove their data from our servers.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <form action={deleteUser.bind(null, u.id)}>
-                                    <AlertDialogAction type="submit">Continue</AlertDialogAction>
-                                </form>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                  </Dialog>
+                    <Dialog>
+                        <AlertDialog>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" disabled={u.id === currentUserId}>
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DialogTrigger asChild>
+                                        <DropdownMenuItem>
+                                            <Edit className="mr-2 h-4 w-4" />
+                                            Edit Role
+                                        </DropdownMenuItem>
+                                    </DialogTrigger>
+                                    <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem className="text-destructive">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete User
+                                        </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            {/* Edit Dialog */}
+                            <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                    <DialogTitle>Edit User Role</DialogTitle>
+                                    <DialogDescription>
+                                        Change the role for {u.first_name} {u.last_name}.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <EditUserForm user={u} />
+                            </DialogContent>
+                            
+                            {/* Delete Confirmation Dialog */}
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the user account
+                                        and remove their data from our servers.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <form action={deleteUser.bind(null, u.id)}>
+                                        <AlertDialogAction type="submit" className="bg-destructive hover:bg-destructive/90">Continue</AlertDialogAction>
+                                    </form>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </Dialog>
                 </div>
               </div>
             ))}
