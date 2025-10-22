@@ -1,10 +1,14 @@
 import { create } from 'zustand';
-import type { PropertyInterest } from '@/lib/types';
+import type { Property, PropertyInterest } from '@/lib/types';
+
+interface EnrichedInterest extends PropertyInterest {
+  property?: Property;
+}
 
 interface InterestState {
-  interests: PropertyInterest[];
-  setInterests: (interests: PropertyInterest[]) => void;
-  addInterest: (interest: PropertyInterest) => void;
+  interests: EnrichedInterest[];
+  setInterests: (interests: EnrichedInterest[]) => void;
+  addInterest: (interest: EnrichedInterest) => void;
 }
 
 export const useInterestStore = create<InterestState>((set) => ({

@@ -7,6 +7,7 @@ import { CustomerDashboard } from './customer-dashboard';
 import { CallerDashboard } from './caller-dashboard';
 import { SalesManagerDashboard } from './sales-manager-dashboard';
 import { SalesExecutiveDashboard } from './sales-executive-dashboard';
+import type { EnrichedProperty, EnrichedInterest, EnrichedAppointment } from './customer-dashboard'
 
 interface RoleDashboardProps {
   userRole: string;
@@ -14,7 +15,7 @@ interface RoleDashboardProps {
 }
 
 export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   switch (userRole) {
     case 'super_admin':
@@ -32,7 +33,6 @@ export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
     case 'sales_executive_2':
       return <SalesExecutiveDashboard userId={userId} />;
     case 'customer':
-      // BUG FIX: Using the correct table name 'property_interests' from your schema.
       const [
         propertiesResult,
         myInterestsResult,
@@ -45,11 +45,13 @@ export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
 
       return <CustomerDashboard 
         userId={userId} 
-        initialProperties={propertiesResult.data || []}
-        initialMyInterests={myInterestsResult.data || []}
-        initialMyAppointments={myAppointmentsResult.data || []}
+        initialProperties={(propertiesResult.data as EnrichedProperty[]) || []}
+        initialMyInterests={(myInterestsResult.data as EnrichedInterest[]) || []}
+        initialMyAppointments={(myAppointmentsResult.data as EnrichedAppointment[]) || []}
       />;
     default:
+      // Fallback for any unknown or unhandled roles
+      console.warn(`Unhandled user role: ${userRole}. Redirecting to login.`);
       redirect('/login');
   }
 }

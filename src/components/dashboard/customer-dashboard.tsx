@@ -22,15 +22,15 @@ import type { Property, PropertyInterest, Appointment, Profile } from '@/lib/typ
 import { useInterestStore } from '@/lib/store/interest-store';
 import { usePropertyStore } from '@/lib/store/property-store';
 import { useAppointmentStore } from '@/lib/store/appointment-store';
+import Image from 'next/image';
 
-// Define the shape of our props with joined tables
-interface EnrichedProperty extends Property {
+export interface EnrichedProperty extends Property {
     property_media?: { file_path: string }[];
 }
-interface EnrichedInterest extends PropertyInterest {
+export interface EnrichedInterest extends PropertyInterest {
     property?: Property;
 }
-interface EnrichedAppointment extends Appointment {
+export interface EnrichedAppointment extends Appointment {
     agent?: Profile;
 }
 
@@ -76,7 +76,7 @@ export function CustomerDashboard({
           title: 'Success!',
           description: result.message,
         });
-        addInterest(result.interest);
+        addInterest(result.interest as EnrichedInterest);
       } else {
         toast({
           title: 'Uh oh!',
@@ -186,9 +186,11 @@ export function CustomerDashboard({
                 <div key={property.id} className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="aspect-video bg-gray-200 relative">
                     {property?.property_media && property.property_media.length > 0 ? (
-                      <img 
+                      <Image 
                         src={property.property_media[0].file_path} 
                         alt={property.title || 'Property Image'}
+                        width={400}
+                        height={225}
                         className="w-full h-full object-cover"
                       />
                     ) : (

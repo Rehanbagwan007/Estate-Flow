@@ -17,8 +17,6 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          // If the cookie is set, update the request cookies as well.
-          // This is necessary for Server Components to get the latest session.
           request.cookies.set({ name, value, ...options });
           response = NextResponse.next({
             request: {
@@ -28,7 +26,6 @@ export async function middleware(request: NextRequest) {
           response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
-          // If the cookie is removed, update the request cookies as well.
           request.cookies.set({ name, value: '', ...options });
           response = NextResponse.next({
             request: {
@@ -53,7 +50,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // --- Redirect unauthenticated users from protected pages ---
-  if (!user && pathname.startsWith('/(dashboard)')) {
+  const isProtectedPath = !['/login', '/signup', '/pending-approval'].includes(pathname);
+  if (!user && isProtectedPath) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
@@ -66,8 +64,7 @@ export async function middleware(request: NextRequest) {
 
     if (error && error.code !== 'PGRST116') {
       console.error('Middleware profile error:', error);
-      // Allow access but maybe log error
-      return response;
+      return NextResponse.redirect(new URL('/login', request.url));
     }
 
     if (!profile) {
@@ -91,9 +88,9 @@ export async function middleware(request: NextRequest) {
     
     // --- Role-Based Route Protection ---
     const rolePaths: Record<string, string[]> = {
-      super_admin: ['/admin', '/sales', '/dashboard', '/properties', '/leads', '/tasks'],
-      admin: ['/admin', '/sales', '/dashboard', '/properties', '/leads', '/tasks'],
-      agent: ['/dashboard', '/properties', '/leads', '/tasks', '/agent'],
+      super_admin: ['/admin', '/sales', '/dashboard', '/properties', '/leads', '/tasks', '/calls'],
+      admin: ['/admin', '/sales', '/dashboard', '/properties', '/leads', '/tasks', '/calls'],
+      agent: ['/dashboard', '/properties', '/leads', '/tasks', '/agent', '/calls'],
       caller_1: ['/dashboard', '/calls'],
       caller_2: ['/dashboard', '/calls'],
       sales_manager: ['/dashboard', '/sales', '/leads', '/tasks'],
@@ -105,8 +102,7 @@ export async function middleware(request: NextRequest) {
     const allowedPaths = rolePaths[role] || [];
     const isPathAllowed = allowedPaths.some(path => pathname.startsWith(path)) || pathname === '/dashboard' || pathname === '/';
 
-    if (pathname.startsWith('/(dashboard)') && !isPathAllowed && pathname !== '/dashboard' && pathname !== '/') {
-      // Redirect to their main dashboard if they try to access an unauthorized area
+    if (isProtectedPath && !isPathAllowed && pathname !== '/dashboard' && pathname !== '/') {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }

@@ -8,52 +8,37 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  console.log('Dashboard page user:', user)
-
   if (!user) {
     redirect('/login');
   }
 
-  console.log('User ID:', user.id)
-
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, approval_status')
     .eq('id', user.id)
     .single();
 
-  console.log('Profile data:', profile)
-  console.log('Profile error:', profileError)
-
-  // If no profile exists, create one with default role
-  if (!profile && profileError?.code === 'PGRST116') {
-    console.log('Creating default profile for user')
-    const { data: newProfile, error: createError } = await supabase
-      .from('profiles')
-      .insert({
-        id: user.id,
-        first_name: user.user_metadata?.first_name || 'User',
-        last_name: user.user_metadata?.last_name || '',
-        email: user.email,
-        role: user.user_metadata?.role || 'agent'
-      })
-      .select('role')
-      .single();
-
-    if (createError) {
-      console.error('Error creating profile:', createError)
+  // This handles the case where a user is created in auth but the profile trigger fails or is delayed
+  if (profileError && profileError.code === 'PGRST116') {
+      console.error('Profile not found for user, redirecting to login.', { userId: user.id });
+      // It's safer to log them out to force a clean slate.
       redirect('/login');
-    }
-
-    return <RoleDashboard userRole={newProfile.role} userId={user.id} />;
   }
 
+  if (profileError) {
+      console.error('Unexpected error fetching profile:', profileError);
+      redirect('/login');
+  }
+  
   if (!profile) {
-    console.error('No profile found and could not create one')
+    console.error('No profile found and could not create one');
     redirect('/login');
   }
-
-  // Note: Customer approval check removed since approval_status column doesn't exist yet
+  
+  // Customer approval logic
+  if (profile.role === 'customer' && profile.approval_status !== 'approved') {
+    redirect('/pending-approval');
+  }
 
   return <RoleDashboard userRole={profile.role} userId={user.id} />;
 }

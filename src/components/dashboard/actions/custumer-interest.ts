@@ -42,7 +42,7 @@ export async function expressInterest(propertyId: string): Promise<InterestResul
     customer_id: user.id,
     status: 'pending', 
     interest_level: 'interested' 
-  }).select().single();
+  }).select('*, property:properties(*)').single();
 
   if (error) {
     console.error('Error creating property interest:', error);
@@ -50,6 +50,7 @@ export async function expressInterest(propertyId: string): Promise<InterestResul
   }
 
   revalidatePath('/dashboard');
+  revalidatePath('/my-interests');
 
   return { success: true, message: 'Your interest has been submitted successfully!', interest: data };
 }
