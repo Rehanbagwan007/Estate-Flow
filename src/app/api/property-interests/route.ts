@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
     const {
       data: { user },
-    } = await (await supabase).auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check if user is approved customer
-    const { data: profile } = await (await supabase)
+    const { data: profile } = await supabase
       .from('profiles')
       .select('role, approval_status')
       .eq('id', user.id)
@@ -31,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create property interest
-    const { data: interest, error } = await (await supabase)
+    const { data: interest, error } = await supabase
       .from('property_interests')
       .insert({
         property_id,
@@ -51,14 +53,14 @@ export async function POST(request: NextRequest) {
 
     // Update customer phone if provided
     if (phone) {
-      await (await supabase)
+      await supabase
         .from('profiles')
         .update({ phone })
         .eq('id', user.id);
     }
 
     // Create notification for admins
-    const { data: admins } = await (await supabase)
+    const { data: admins } = await supabase
       .from('profiles')
       .select('id')
       .in('role', ['admin', 'super_admin']);
@@ -76,7 +78,7 @@ export async function POST(request: NextRequest) {
         }
       }));
 
-      await (await supabase)
+      await supabase
         .from('notifications')
         .insert(notifications);
     }
@@ -90,16 +92,17 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
     const {
       data: { user },
-    } = await (await supabase).auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: profile } = await (await supabase)
+    const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -109,7 +112,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    let query = (await supabase)
+    let query = supabase
       .from('property_interests')
       .select(`
         *,

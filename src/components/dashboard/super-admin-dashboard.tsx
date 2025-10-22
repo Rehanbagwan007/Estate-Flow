@@ -12,13 +12,15 @@ import {
   Activity,
   BarChart3
 } from 'lucide-react';
+import { cookies } from 'next/headers';
 
 interface SuperAdminDashboardProps {
   userId: string;
 }
 
 export async function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
 
   // Fetch comprehensive analytics data
   const [
@@ -29,12 +31,12 @@ export async function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) 
     appointmentsResult,
     propertyInterestsResult
   ] = await Promise.all([
-    (await supabase).from('profiles').select('*'),
-    (await supabase).from('properties').select('*'),
-    (await supabase).from('leads').select('*'),
-    (await supabase).from('call_logs').select('*'),
-    (await supabase).from('appointments').select('*'),
-    (await supabase).from('property_interests').select('*')
+    supabase.from('profiles').select('*'),
+    supabase.from('properties').select('*'),
+    supabase.from('leads').select('*'),
+    supabase.from('call_logs').select('*'),
+    supabase.from('appointments').select('*'),
+    supabase.from('property_interests').select('*')
   ]);
 
   const users = usersResult.data || [];

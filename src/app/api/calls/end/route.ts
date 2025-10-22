@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
     const {
       data: { user },
-    } = await (await supabase).auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update call log with end details
-    const { data: callLog, error } = await (await supabase)
+    const { data: callLog, error } = await supabase
       .from('call_logs')
       .update({
         call_status: 'completed',
@@ -41,7 +43,7 @@ export async function POST(request: NextRequest) {
     const recordingUrl = `https://exotel-recordings.s3.amazonaws.com/${call_id}.mp3`;
 
     // Update with recording URL
-    await (await supabase)
+    await supabase
       .from('call_logs')
       .update({
         recording_url: recordingUrl,

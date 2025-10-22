@@ -11,13 +11,15 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react';
+import { cookies } from 'next/headers';
 
 interface SalesExecutiveDashboardProps {
   userId: string;
 }
 
 export async function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps) {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
 
   // Fetch sales executive data
   const [
@@ -26,10 +28,10 @@ export async function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboar
     myCallsResult,
     myAppointmentsResult
   ] = await Promise.all([
-    (await supabase).from('agent_assignments').select('*, customer:profiles(*)').eq('agent_id', userId),
-    (await supabase).from('leads').select('*').eq('assigned_to', userId),
-    (await supabase).from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId),
-    (await supabase).from('appointments').select('*, customer:profiles(*)').eq('agent_id', userId)
+    supabase.from('agent_assignments').select('*, customer:profiles(*)').eq('agent_id', userId),
+    supabase.from('leads').select('*').eq('assigned_to', userId),
+    supabase.from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId),
+    supabase.from('appointments').select('*, customer:profiles(*)').eq('agent_id', userId)
   ]);
 
   const myAssignments = myAssignmentsResult.data || [];

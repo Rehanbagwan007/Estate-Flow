@@ -13,13 +13,15 @@ import {
   UserPlus,
   Building
 } from 'lucide-react';
+import { cookies } from 'next/headers';
 
 interface AdminDashboardProps {
   userId: string;
 }
 
 export async function AdminDashboard({ userId }: AdminDashboardProps) {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
 
   // Fetch admin-specific data
   const [
@@ -29,11 +31,11 @@ export async function AdminDashboard({ userId }: AdminDashboardProps) {
     appointmentsResult,
     callLogsResult
   ] = await Promise.all([
-    (await supabase).from('profiles').select('*').eq('approval_status', 'pending'),
-    (await supabase).from('properties').select('*'),
-    (await supabase).from('property_interests').select('*, property:properties(*), customer:profiles(*)'),
-    (await supabase).from('appointments').select('*, agent:profiles(*), customer:profiles(*)'),
-    (await supabase).from('call_logs').select('*, agent:profiles(*), customer:profiles(*)')
+    supabase.from('profiles').select('*').eq('approval_status', 'pending'),
+    supabase.from('properties').select('*'),
+    supabase.from('property_interests').select('*, property:properties(*), customer:profiles(*)'),
+    supabase.from('appointments').select('*, agent:profiles(*), customer:profiles(*)'),
+    supabase.from('call_logs').select('*, agent:profiles(*), customer:profiles(*)')
   ]);
 
   const pendingUsers = pendingUsersResult.data || [];

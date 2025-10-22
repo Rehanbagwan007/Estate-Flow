@@ -3,9 +3,11 @@ import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Phone, PhoneCall, Users, Clock } from 'lucide-react';
+import { cookies } from 'next/headers';
 
 export default async function CallsPage() {
-  const supabase = await createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
   const {
     data: { user },
   } = await supabase.auth.getUser()

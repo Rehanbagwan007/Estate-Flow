@@ -2,13 +2,15 @@ import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -32,7 +34,7 @@ export default async function DashboardLayout({
   // If the profile is still not found after login, redirect to login.
   if (!profile) {
     console.error('No profile found for user in layout, redirecting to login.', { userId: user.id });
-    redirect('/login');
+    redirect('/login?error=profile_not_found');
   }
   
   // Handle customer approval flow

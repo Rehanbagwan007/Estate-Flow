@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { propertySchema } from '@/schemas';
 import { revalidatePath } from 'next/cache';
 import type { Property } from '@/lib/types';
+import { cookies } from 'next/headers';
 
 // --- Helper Functions & Interfaces ---
 
@@ -77,10 +78,11 @@ export async function saveProperty(
   prevState: { message: string; success?: boolean },
   formData: FormData
 ) {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
   const {
     data: { user },
-  } = await (await supabase).auth.getUser();
+  } = await supabase.auth.getUser();
 
   if (!user) {
     return { message: 'Authentication required.' };
@@ -105,7 +107,7 @@ export async function saveProperty(
   try {
     if (propertyId) {
       // Update existing property
-      const { data, error } = await (await supabase)
+      const { data, error } = await supabase
         .from('properties')
         .update({ ...validatedFields.data, updated_at: new Date().toISOString() })
         .eq('id', propertyId)
@@ -115,7 +117,7 @@ export async function saveProperty(
       savedProperty = data;
     } else {
       // Create new property
-      const { data, error } = await (await supabase)
+      const { data, error } = await supabase
         .from('properties')
         .insert({
           ...validatedFields.data,
@@ -136,7 +138,7 @@ export async function saveProperty(
     if (files.length > 0 && files[0].size > 0) {
       for (const file of files) {
         const filePath = `${user.id}/${savedProperty.id}/${Date.now()}-${file.name}`;
-        const { error: uploadError } = await (await supabase)?.storage
+        const { error: uploadError } = await supabase.storage
           .from('property_media')
           .upload(filePath, file);
 
@@ -145,11 +147,11 @@ export async function saveProperty(
           continue;
         }
         
-        const { data: urlData } = (await supabase)?.storage
+        const { data: urlData } = supabase.storage
           .from('property_media')
           .getPublicUrl(filePath);
 
-        await (await supabase).from('property_media').insert({
+        await supabase.from('property_media').insert({
           property_id: savedProperty.id,
           file_path: urlData.publicUrl,
           file_type: file.type,
@@ -161,7 +163,7 @@ export async function saveProperty(
     if (!propertyId && savedProperty && platformsToShare.length > 0) {
       console.log(`Property created. Sharing to: ${platformsToShare.join(', ')}`);
       
-      const firstImageUrl = await getFirstPropertyImage(await supabase, savedProperty.id);
+      const firstImageUrl = await getFirstPropertyImage(supabase, savedProperty.id);
       const sharingPromises: Promise<MediaUploadResult>[] = [];
 
       if (platformsToShare.includes('99acres')) sharingPromises.push(shareTo99acres(savedProperty));
@@ -191,7 +193,7 @@ export async function saveProperty(
 
           if (sharesToSave.length > 0) {
             console.log(`Saving ${sharesToSave.length} share URLs to the database...`);
-            const { error } = await (await supabase).from('property_shares').insert(sharesToSave);
+            const { error } = await supabase.from('property_shares').insert(sharesToSave);
             if (error) {
                 console.error('Error saving share URLs to database:', error.message);
             } else {

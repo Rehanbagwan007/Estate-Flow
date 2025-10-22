@@ -11,13 +11,15 @@ import {
   UserCheck,
   Building2
 } from 'lucide-react';
+import { cookies } from 'next/headers';
 
 interface SalesManagerDashboardProps {
   userId: string;
 }
 
 export async function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
 
   // Fetch sales manager data
   const [
@@ -26,10 +28,10 @@ export async function SalesManagerDashboard({ userId }: SalesManagerDashboardPro
     assignmentsResult,
     performanceResult
   ] = await Promise.all([
-    (await supabase).from('profiles').select('*').in('role', ['sales_executive_1', 'sales_executive_2']),
-    (await supabase).from('leads').select('*, assigned_to:profiles(*)'),
-    (await supabase).from('agent_assignments').select('*, agent:profiles(*)'),
-    (await supabase).from('call_logs').select('*, agent:profiles(*)')
+    supabase.from('profiles').select('*').in('role', ['sales_executive_1', 'sales_executive_2']),
+    supabase.from('leads').select('*, assigned_to:profiles(*)'),
+    supabase.from('agent_assignments').select('*, agent:profiles(*)'),
+    supabase.from('call_logs').select('*, agent:profiles(*)')
   ]);
 
   const salesExecutives = salesExecutivesResult.data || [];

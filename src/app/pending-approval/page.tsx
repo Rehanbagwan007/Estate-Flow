@@ -4,18 +4,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, CheckCircle, XCircle, Phone, Mail } from 'lucide-react';
+import { cookies } from 'next/headers';
 
 export default async function PendingApprovalPage() {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
   const {
     data: { user },
-  } = await (await supabase).auth.getUser()
+  } = await supabase.auth.getUser()
 
   if (!user) {
     redirect('/login');
   }
 
-  const { data: profile } = await (await supabase)
+  const { data: profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('id',user.id)

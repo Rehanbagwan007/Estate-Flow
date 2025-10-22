@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { notificationService } from '@/lib/notifications/notification-service';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
     const {
       data: { user },
-    } = await (await supabase).auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check if user is admin or super admin
-    const { data: profile } = await (await supabase)
+    const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -32,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get property interest details
-    const { data: propertyInterest } = await (await supabase)
+    const { data: propertyInterest } = await supabase
       .from('property_interests')
       .select(`
         *,
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create agent assignment
-    const { data: assignment, error } = await (await supabase)
+    const { data: assignment, error } = await supabase
       .from('agent_assignments')
       .insert({
         agent_id,
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update property interest status
-    await (await supabase)
+    await supabase
       .from('property_interests')
       .update({ 
         status: 'assigned',
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
       .eq('id', property_interest_id);
 
     // Get agent details
-    const { data: agent } = await (await supabase)
+    const { data: agent } = await supabase
       .from('profiles')
       .select('first_name, last_name, phone')
       .eq('id', agent_id)
@@ -95,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create notification for agent
-    await (await supabase)
+    await supabase
       .from('notifications')
       .insert({
         user_id: agent_id,

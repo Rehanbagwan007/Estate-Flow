@@ -12,13 +12,15 @@ import {
   TrendingUp,
   MapPin
 } from 'lucide-react';
+import { cookies } from 'next/headers';
 
 interface AgentDashboardProps {
   userId: string;
 }
 
 export async function AgentDashboard({ userId }: AgentDashboardProps) {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
 
   // Fetch agent-specific data
   const [
@@ -27,10 +29,10 @@ export async function AgentDashboard({ userId }: AgentDashboardProps) {
     myCallLogsResult,
     myPropertiesResult
   ] = await Promise.all([
-    (await supabase).from('agent_assignments').select('*, customer:profiles(*), property_interest:property_interests(*)').eq('agent_id', userId),
-    (await supabase).from('appointments').select('*, customer:profiles(*)').eq('agent_id', userId),
-    (await supabase).from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId),
-    (await supabase).from('properties').select('*').eq('created_by', userId)
+    supabase.from('agent_assignments').select('*, customer:profiles(*), property_interest:property_interests(*)').eq('agent_id', userId),
+    supabase.from('appointments').select('*, customer:profiles(*)').eq('agent_id', userId),
+    supabase.from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId),
+    supabase.from('properties').select('*').eq('created_by', userId)
   ]);
 
   const myAssignments = myAssignmentsResult.data || [];

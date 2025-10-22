@@ -13,9 +13,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { AddUserForm } from "@/app/(dashboard)/admin/users/add-user-form"
+import { cookies } from 'next/headers';
 
 export default async function AdminUsersPage() {
-  const supabase = await createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -151,4 +153,3 @@ export default async function AdminUsersPage() {
     </div>
   );
 }
-

@@ -11,21 +11,23 @@ import {
   Pause,
   Volume2
 } from 'lucide-react';
+import { cookies } from 'next/headers';
 
 interface CallerDashboardProps {
   userId: string;
 }
 
 export async function CallerDashboard({ userId }: CallerDashboardProps) {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
 
   // Fetch caller-specific data
   const [
     myCallLogsResult,
     recentCallsResult
   ] = await Promise.all([
-    (await supabase).from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId),
-    (await supabase).from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId).order('created_at', { ascending: false }).limit(10)
+    supabase.from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId),
+    supabase.from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId).order('created_at', { ascending: false }).limit(10)
   ]);
 
   const myCallLogs = myCallLogsResult.data || [];

@@ -8,6 +8,7 @@ import { CallerDashboard } from './caller-dashboard';
 import { SalesManagerDashboard } from './sales-manager-dashboard';
 import { SalesExecutiveDashboard } from './sales-executive-dashboard';
 import type { EnrichedProperty, EnrichedInterest, EnrichedAppointment } from './customer-dashboard'
+import { cookies } from 'next/headers';
 
 interface RoleDashboardProps {
   userRole: string;
@@ -15,7 +16,8 @@ interface RoleDashboardProps {
 }
 
 export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
 
   switch (userRole) {
     case 'super_admin':
@@ -38,9 +40,9 @@ export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
         myInterestsResult,
         myAppointmentsResult
       ] = await Promise.all([
-        (await supabase).from('properties').select('*, property_media(*)').eq('status', 'Available'),
-        (await supabase).from('property_interests').select('*, property:properties(*)').eq('customer_id', userId),
-        (await supabase).from('appointments').select('*, agent:profiles(*)').eq('customer_id', userId)
+        supabase.from('properties').select('*, property_media(*)').eq('status', 'Available'),
+        supabase.from('property_interests').select('*, property:properties(*)').eq('customer_id', userId),
+        supabase.from('appointments').select('*, agent:profiles(*)').eq('customer_id', userId)
       ]);
 
       return <CustomerDashboard 

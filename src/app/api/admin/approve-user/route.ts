@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { notificationService } from '@/lib/notifications/notification-service';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
     const {
       data: { user },
-    } = await (await supabase).auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check if user is admin or super admin
-    const { data: profile } = await (await supabase)
+    const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
     const approvalStatus = action === 'approve' ? 'approved' : 'rejected';
     const approvedAt = action === 'approve' ? new Date().toISOString() : null;
 
-    const { data: updatedUser, error } = await (await supabase)
+    const { data: updatedUser, error } = await supabase
       .from('profiles')
       .update({
         approval_status: approvalStatus,

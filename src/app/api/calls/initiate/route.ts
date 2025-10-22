@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
     const {
       data: { user },
-    } = await (await supabase).auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -23,7 +25,7 @@ export async function POST(request: NextRequest) {
     const callId = `exotel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // Create call log entry
-    const { data: callLog, error } = await (await supabase)
+    const { data: callLog, error } = await supabase
       .from('call_logs')
       .insert({
         call_id: callId,
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     if (!exotelResponse.success) {
       // Update call status to failed
-      await (await supabase)
+      await supabase
         .from('call_logs')
         .update({ call_status: 'failed' })
         .eq('id', callLog.id);

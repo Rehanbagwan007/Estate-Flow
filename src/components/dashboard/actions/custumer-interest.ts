@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { PropertyInterest } from '@/lib/types';
+import { cookies } from 'next/headers';
 
 interface InterestResult {
   success: boolean;
@@ -11,17 +12,18 @@ interface InterestResult {
 }
 
 export async function expressInterest(propertyId: string): Promise<InterestResult> {
-  const supabase = createClient();
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
   
   const {
     data: { user },
-  } = await (await supabase).auth.getUser();
+  } = await supabase.auth.getUser();
 
   if (!user) {
     return { success: false, message: 'You must be logged in to express interest.' };
   }
 
-  const { data: existingInterest, error: existingError } = await (await supabase)
+  const { data: existingInterest, error: existingError } = await supabase
     .from('property_interests')
     .select('id')
     .eq('customer_id', user.id)
@@ -37,7 +39,7 @@ export async function expressInterest(propertyId: string): Promise<InterestResul
     return { success: false, message: 'You have already expressed interest in this property.' };
   }
 
-  const { data, error } = await (await supabase).from('property_interests').insert({
+  const { data, error } = await supabase.from('property_interests').insert({
     property_id: propertyId,
     customer_id: user.id,
     status: 'pending', 
