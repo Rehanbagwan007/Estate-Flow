@@ -4,11 +4,9 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { loginSchema, signupSchema } from '@/schemas';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 
 export async function login(values: z.infer<typeof loginSchema>) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data, error } = await supabase.auth.signInWithPassword(values);
 
   if (error) {
@@ -23,8 +21,7 @@ export async function login(values: z.infer<typeof loginSchema>) {
 }
 
 export async function signup(values: z.infer<typeof signupSchema>) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data, error } = await supabase.auth.signUp({
     email: values.email,
     password: values.password,
