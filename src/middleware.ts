@@ -13,10 +13,10 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
+        get: (name: string) => {
           return request.cookies.get(name)?.value
         },
-        set(name: string, value: string, options: CookieOptions) {
+        set: (name: string, value: string, options: CookieOptions) => {
           request.cookies.set({
             name,
             value,
@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
             ...options,
           })
         },
-        remove(name: string, options: CookieOptions) {
+        remove: (name: string, options: CookieOptions) => {
           request.cookies.set({
             name,
             value: '',
@@ -59,11 +59,6 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-
-  // This is a fix for a redirect loop that was happening when a user was not approved
-  if (user && pathname.startsWith('/pending-approval')) {
-    return response;
-  }
   
   if (user) {
     const { data: profile } = await supabase
@@ -89,7 +84,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // If user is not logged in and is trying to access a protected route, redirect to login.
-  if (!user && !isAuthRoute && !pathname.startsWith('/pending-approval')) {
+  if (!user && !isAuthRoute && pathname !== '/pending-approval') {
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
