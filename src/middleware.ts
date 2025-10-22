@@ -44,66 +44,44 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // --- Redirect authenticated users from auth pages ---
-  if (user && (pathname === '/login' || pathname === '/signup')) {
+  const authRoutes = ['/login', '/signup'];
+  const isAuthRoute = authRoutes.includes(pathname);
+
+  // If user is authenticated and tries to access login/signup, redirect to dashboard
+  if (user && isAuthRoute) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // --- Redirect unauthenticated users from protected pages ---
-  const isProtectedPath = !['/login', '/signup', '/pending-approval'].includes(pathname);
-  if (!user && isProtectedPath) {
+  // If user is not authenticated and tries to access a protected route, redirect to login
+  if (!user && !isAuthRoute) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
-  
+
   if (user) {
-    const { data: profile, error } = await supabase
+    const { data: profile } = await supabase
       .from('profiles')
       .select('role, approval_status')
       .eq('id', user.id)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Middleware profile error:', error);
+    // If profile is missing, something is wrong, send to login
+    if (!profile) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
-
-    if (!profile) {
-      if (pathname.startsWith('/(dashboard)')) {
-        return NextResponse.redirect(new URL('/login', request.url));
-      }
-      return response;
-    }
     
-    const { role, approval_status } = profile;
-
-    // --- Customer Approval Flow ---
-    if (role === 'customer') {
-      if (approval_status !== 'approved' && pathname !== '/pending-approval') {
+    // Handle customer approval flow
+    if (profile.role === 'customer') {
+      if (profile.approval_status !== 'approved' && pathname !== '/pending-approval') {
         return NextResponse.redirect(new URL('/pending-approval', request.url));
       }
-      if (approval_status === 'approved' && pathname === '/pending-approval') {
+      if (profile.approval_status === 'approved' && pathname === '/pending-approval') {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
-    }
-    
-    // --- Role-Based Route Protection ---
-    const rolePaths: Record<string, string[]> = {
-      super_admin: ['/admin', '/sales', '/dashboard', '/properties', '/leads', '/tasks', '/calls'],
-      admin: ['/admin', '/sales', '/dashboard', '/properties', '/leads', '/tasks', '/calls'],
-      agent: ['/dashboard', '/properties', '/leads', '/tasks', '/agent', '/calls'],
-      caller_1: ['/dashboard', '/calls'],
-      caller_2: ['/dashboard', '/calls'],
-      sales_manager: ['/dashboard', '/sales', '/leads', '/tasks'],
-      sales_executive_1: ['/dashboard', '/sales', '/leads', '/tasks', '/agent'],
-      sales_executive_2: ['/dashboard', '/sales', '/leads', '/tasks', '/agent'],
-      customer: ['/dashboard', '/my-interests', '/my-appointments', '/properties'],
-    };
-
-    const allowedPaths = rolePaths[role] || [];
-    const isPathAllowed = allowedPaths.some(path => pathname.startsWith(path)) || pathname === '/dashboard' || pathname === '/';
-
-    if (isProtectedPath && !isPathAllowed && pathname !== '/dashboard' && pathname !== '/') {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+    } else {
+        // If a non-customer lands on pending-approval, send them to their dashboard
+        if (pathname === '/pending-approval') {
+            return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
     }
   }
 
@@ -117,8 +95,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - api/ (API routes)
      * Feel free to modify this pattern to include more paths.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
