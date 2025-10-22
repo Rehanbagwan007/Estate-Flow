@@ -1,3 +1,4 @@
+
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { createClient } from '@/lib/supabase/server';
@@ -15,6 +16,8 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser()
 
+  // The middleware should have already redirected if there is no user.
+  // This is a failsafe.
   if (!user) {
     redirect('/login');
   }
@@ -25,11 +28,10 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .single();
   
+  // The middleware should have handled the case of a missing profile.
+  // This is a failsafe.
   if (!profile) {
-    // If the profile doesn't exist, something is wrong.
-    // The dashboard page will handle the ultimate redirect to login.
-    // Returning children prevents a render error for a moment.
-    return <>{children}</>;
+    redirect('/login?message=Profile not found.');
   }
 
   return (

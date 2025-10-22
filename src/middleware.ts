@@ -1,3 +1,4 @@
+
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -40,70 +41,59 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession();
   const user = session?.user;
-
   const { pathname } = request.nextUrl;
 
-  // Define public routes that do not require authentication
-  const publicRoutes = ['/login', '/signup', '/pending-approval'];
+  const publicRoutes = ['/login', '/signup'];
 
-  // If user is not logged in and trying to access a protected route, redirect to login
-  if (!user && !publicRoutes.includes(pathname)) {
-    // Allow access to root only to redirect, everything else needs login
-    if (pathname === '/') return response;
+  // If the user is not logged in and not on a public route, redirect to login.
+  if (!user && !publicRoutes.includes(pathname) && pathname !== '/pending-approval') {
     return NextResponse.redirect(new URL('/login', request.url));
   }
-  
+
+  // If the user is logged in
   if (user) {
+    // If they are on a public route like /login, redirect them to the dashboard.
+    if (publicRoutes.includes(pathname)) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
     const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, approval_status')
-      .eq('id', user.id)
-      .single();
+        .from('profiles')
+        .select('role, approval_status')
+        .eq('id', user.id)
+        .single();
+    
+    // If there's no profile, it's a broken state. Log them out and send to login.
+    if (!profile) {
+        await supabase.auth.signOut();
+        return NextResponse.redirect(new URL('/login?message=Profile not found. Please log in again.', request.url));
+    }
 
-    if (profile) {
-      // Admins and Super Admins should NEVER be stuck in an approval loop.
-      const isAdmin = ['super_admin', 'admin'].includes(profile.role);
-      
-      if (isAdmin) {
-        // If an admin is on the pending page for some reason, get them out.
-        if (pathname.startsWith('/pending-approval')) {
-            return NextResponse.redirect(new URL('/dashboard', request.url));
-        }
-        // Otherwise, let them proceed.
-        return response;
-      }
+    const isAdmin = ['super_admin', 'admin'].includes(profile.role);
+    const isApproved = profile.approval_status === 'approved';
+    const onPendingPage = pathname.startsWith('/pending-approval');
 
-      // For all other roles, enforce the approval flow.
-      const isApproved = profile.approval_status === 'approved';
-      const onPendingPage = pathname.startsWith('/pending-approval');
+    // Admins should never be on the pending page.
+    if (isAdmin && onPendingPage) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
 
-      if (!isApproved && !onPendingPage) {
-          return NextResponse.redirect(new URL('/pending-approval', request.url));
-      }
-      if (isApproved && onPendingPage) {
-          return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
+    // If a non-admin user is NOT approved AND they are NOT on the pending page, redirect them there.
+    if (!isAdmin && !isApproved && !onPendingPage) {
+        return NextResponse.redirect(new URL('/pending-approval', request.url));
+    }
 
-    } else {
-      // This can happen if the profile is not yet created after signup.
-      // A redirect to login is a safe fallback.
-      return NextResponse.redirect(new URL('/login?message=Profile not found. Please try logging in again.', request.url));
+    // If a user IS approved and they somehow land on the pending page, redirect them to the dashboard.
+    if (isApproved && onPendingPage) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
 
-  return response
+  return response;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - api/ (API routes)
-     * Feel free to modify this pattern to include more paths.
-     */
     '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
