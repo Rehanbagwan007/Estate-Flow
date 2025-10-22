@@ -18,7 +18,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // If the cookie is updated, update the cookies for the request and response
+          // If the cookie is set, update the cookies for the request and response
           request.cookies.set({
             name,
             value,
@@ -79,8 +79,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
-  // This logic is for a customer approval flow which is no longer active.
-  // It can be safely removed, but leaving it does not cause harm.
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
