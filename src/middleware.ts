@@ -1,10 +1,31 @@
-import { type NextRequest } from 'next/server';
-import { updateSession } from '@/lib/supabase/middleware';
+import { type NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+
 
 export async function middleware(request: NextRequest) {
-  // This is the only responsibility of the middleware: to refresh the session token.
-  // It will NOT perform any redirects.
-  return await updateSession(request);
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+
+  // If user is not logged in and is trying to access a protected route, redirect to login
+  if (!user && pathname !== '/login') {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // If user is logged in and tries to access the login page, redirect to dashboard
+  if (user && pathname === '/login') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // Refresh session
+  const response = NextResponse.next();
+  return response;
 }
 
 export const config = {

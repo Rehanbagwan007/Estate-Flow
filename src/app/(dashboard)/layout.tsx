@@ -15,8 +15,12 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser()
 
-  // The middleware no longer handles redirects. This layout is now the gatekeeper.
+  // The middleware now handles redirecting unauthenticated users.
+  // If we reach this point, we can assume a user exists.
+  // If for some reason the user doesn't exist, it's a critical error state.
   if (!user) {
+    // This should theoretically be unreachable due to middleware.
+    // But as a fallback, redirect to login.
     return redirect('/login');
   }
 
@@ -26,8 +30,8 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .single();
   
-  // If the profile doesn't exist, this is a critical error. 
-  // Log the user out and send them to login with a clear message.
+  // If the profile doesn't exist after a successful login, this is a critical data issue.
+  // Log the user out to prevent further errors and force a clean slate.
   if (!profile) {
     await supabase.auth.signOut();
     return redirect('/login?message=Profile not found. Please log in again.');

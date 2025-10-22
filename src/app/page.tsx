@@ -1,18 +1,7 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 
+// The middleware now handles routing, so this page can simply redirect
+// to the most logical starting point.
 export default async function RootPage() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect('/dashboard');
-  } else {
-    redirect('/login');
-  }
+  redirect('/dashboard');
 }
