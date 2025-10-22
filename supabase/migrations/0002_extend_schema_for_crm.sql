@@ -25,9 +25,6 @@ create table if not exists public.profiles (
   email text unique,
   phone text unique,
   role public.user_role not null default 'customer',
-  approval_status text default 'pending', -- pending, approved, rejected
-  approved_by uuid references public.profiles(id),
-  approved_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (id)
@@ -62,7 +59,6 @@ create table if not exists public.properties (
   updated_at timestamptz not null default now(),
   primary key (id)
 );
-
 alter table public.properties enable row level security;
 create policy "Properties are viewable by authenticated users." on public.properties for select to authenticated using (true);
 create policy "Agents and admins can create properties." on public.properties for insert with check (
@@ -76,7 +72,6 @@ create policy "Property creator or admins can delete." on public.properties for 
   auth.uid() = created_by or 
   (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
 );
-
 
 -- 4. Create property_media table
 create table if not exists public.property_media (
@@ -101,7 +96,6 @@ create policy "Media creator or admins can delete." on public.property_media for
   (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
 );
 
-
 -- 5. Create property_interests table
 create table if not exists public.property_interests (
   id uuid not null default gen_random_uuid(),
@@ -116,7 +110,7 @@ create table if not exists public.property_interests (
   primary key (id)
 );
 alter table public.property_interests enable row level security;
-create policy "Customers can manage their own interests." on public.property_interests for all using (auth.uid() = customer_id);
+create policy "Users can manage their own interests." on public.property_interests for all using (auth.uid() = customer_id);
 create policy "Admins and assigned agents can view interests." on public.property_interests for select using (
   (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin') or
   exists (select 1 from agent_assignments where agent_assignments.property_interest_id = public.property_interests.id and agent_assignments.agent_id = auth.uid())
