@@ -46,11 +46,6 @@ export async function middleware(request: NextRequest) {
   // Define public routes that do not require authentication
   const publicRoutes = ['/login', '/signup', '/pending-approval'];
 
-  // If user is logged in and trying to access a public route (except pending), redirect to dashboard
-  if (user && publicRoutes.includes(pathname) && pathname !== '/pending-approval') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
   // If user is not logged in and trying to access a protected route, redirect to login
   if (!user && !publicRoutes.includes(pathname)) {
     // Allow access to root only to redirect, everything else needs login
@@ -66,7 +61,7 @@ export async function middleware(request: NextRequest) {
       .single();
 
     if (profile) {
-      // ** CRITICAL FIX: Admins and Super Admins should NEVER be stuck in an approval loop. **
+      // Admins and Super Admins should NEVER be stuck in an approval loop.
       const isAdmin = ['super_admin', 'admin'].includes(profile.role);
       
       if (isAdmin) {

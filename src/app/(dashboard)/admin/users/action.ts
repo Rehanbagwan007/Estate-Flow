@@ -28,7 +28,7 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
     const resendApiKey = process.env.RESEND_API_KEY;
 
     if (!resendApiKey) {
-        throw new Error('Resend API key is missing. Please set it in your .env.local file.');
+        return { error: 'Resend API key is missing. Cannot send emails.' };
     }
 
     const resend = new Resend(resendApiKey);
@@ -62,6 +62,7 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
 
     // Step 2: Set the approval status based on the role.
     const isAdminRole = ['super_admin', 'admin'].includes(values.role);
+    // Admins are auto-approved, others are pending.
     const approvalStatus = isAdminRole ? 'approved' : 'pending';
     
     const { error: profileError } = await supabaseAdmin
