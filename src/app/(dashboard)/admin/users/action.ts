@@ -57,16 +57,17 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         return { error: 'User was not created in Auth.' };
     }
 
-    // The `handle_new_user` trigger in `0002_extend_schema_for_crm.sql` will create the profile.
+    // The `handle_new_user` trigger in `0002_extend_schema_for_crm.sql` creates the profile.
     // We now need to update it to set the approval_status correctly.
 
     // Step 2: Set the approval status based on the role.
-    const is_admin_role = ['super_admin', 'admin'].includes(values.role);
+    const isAdminRole = ['super_admin', 'admin'].includes(values.role);
+    const approvalStatus = isAdminRole ? 'approved' : 'pending';
     
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({
-        approval_status: is_admin_role ? 'approved' : 'pending',
+        approval_status: approvalStatus,
       })
       .eq('id', user.id);
 
@@ -74,7 +75,7 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         console.error('Error setting initial profile status:', profileError);
         // If this fails, we should delete the auth user to prevent an orphaned user
         await supabaseAdmin.auth.admin.deleteUser(user.id);
-        return { error: `User created in auth, but failed to create profile: ${profileError.message}` };
+        return { error: `User created in auth, but failed to set profile status: ${profileError.message}` };
     }
 
 

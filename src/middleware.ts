@@ -44,10 +44,10 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Define public routes that do not require authentication
-  const publicRoutes = ['/login', '/signup'];
+  const publicRoutes = ['/login', '/signup', '/pending-approval'];
 
-  // If user is logged in and trying to access a public route, redirect to dashboard
-  if (user && publicRoutes.includes(pathname)) {
+  // If user is logged in and trying to access a public route (except pending), redirect to dashboard
+  if (user && publicRoutes.includes(pathname) && pathname !== '/pending-approval') {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
@@ -65,21 +65,34 @@ export async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    // ** FIX: Admins should not be subject to approval checks **
-    if (profile && !['super_admin', 'admin'].includes(profile.role)) {
-        const isApproved = profile.approval_status === 'approved';
-        const onPendingPage = pathname.startsWith('/pending-approval');
-
-        if (!isApproved && !onPendingPage) {
-            return NextResponse.redirect(new URL('/pending-approval', request.url));
-        }
-        if (isApproved && onPendingPage) {
+    if (profile) {
+      // ** CRITICAL FIX: Admins and Super Admins should NEVER be stuck in an approval loop. **
+      const isAdmin = ['super_admin', 'admin'].includes(profile.role);
+      
+      if (isAdmin) {
+        // If an admin is on the pending page for some reason, get them out.
+        if (pathname.startsWith('/pending-approval')) {
             return NextResponse.redirect(new URL('/dashboard', request.url));
         }
-    } else if (!profile) {
-      // This case might happen if profile creation is delayed.
-      // Redirecting to login is a safe fallback.
-      return NextResponse.redirect(new URL('/login?message=Profile not found. Please try again.', request.url));
+        // Otherwise, let them proceed.
+        return response;
+      }
+
+      // For all other roles, enforce the approval flow.
+      const isApproved = profile.approval_status === 'approved';
+      const onPendingPage = pathname.startsWith('/pending-approval');
+
+      if (!isApproved && !onPendingPage) {
+          return NextResponse.redirect(new URL('/pending-approval', request.url));
+      }
+      if (isApproved && onPendingPage) {
+          return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+
+    } else {
+      // This can happen if the profile is not yet created after signup.
+      // A redirect to login is a safe fallback.
+      return NextResponse.redirect(new URL('/login?message=Profile not found. Please try logging in again.', request.url));
     }
   }
 
