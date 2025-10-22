@@ -21,16 +21,17 @@ export default async function DashboardPage() {
     .single();
 
   if (!profile) {
-    // If the profile is still missing, the layout will handle the redirect
-    // to the pending page. This check is a safeguard.
+    // This can happen in a race condition right after signup.
+    // The safest place to go is the pending page, which will auto-refresh.
     return redirect('/pending-approval');
   }
 
-  // This is the correct place to handle this specific redirect.
-  // The layout ensures the user is logged in, and this page directs them based on their status.
+  // This is now the single source of truth for this specific redirection.
+  // If a user is a customer and their account is not approved, send them to the pending page.
   if (profile.role === 'customer' && profile.approval_status !== 'approved') {
     redirect('/pending-approval');
   }
 
+  // For all other approved users, render their specific dashboard.
   return <RoleDashboard userRole={profile.role} userId={user.id} />;
 }

@@ -27,12 +27,14 @@ export default async function DashboardLayout({
   
   if (profileError || !profile) {
     // This can happen in a race condition right after signup.
-    // Redirecting to pending-approval gives the DB trigger time to run.
+    // Instead of redirecting here (which causes loops), we'll let the 
+    // dashboard page handle the redirect to the pending-approval page.
+    // This prevents a layout-vs-middleware conflict.
     return redirect('/pending-approval');
   }
 
-  // The check for pending customers is now handled in the dashboard page itself
-  // to avoid redirect loops with the middleware.
+  // The conditional redirect for pending customers is now handled in the dashboard page itself.
+  // This layout is now only responsible for providing the structure.
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
