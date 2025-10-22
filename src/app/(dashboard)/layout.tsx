@@ -24,16 +24,17 @@ export default async function DashboardLayout({
     .select('first_name, last_name, email, role, approval_status')
     .eq('id', user.id)
     .single();
-
-  if (profileError && profileError.code !== 'PGRST116') {
-    console.error('Error fetching profile in layout:', profileError);
-    // If there's a significant error, a logout might be the safest option
-    redirect('/login?error=profile_fetch_failed');
-  }
   
-  if (!profile) {
-    console.error('No profile found for user in layout, redirecting to login.', { userId: user.id });
-    redirect('/login?error=profile_not_found');
+  if (profileError || !profile) {
+    // This is the key change. Instead of redirecting to login and causing a loop,
+    // we redirect to a safe page. This handles the race condition where the profile
+    // isn't created yet immediately after signup.
+    return redirect('/pending-approval');
+  }
+
+  // This is the correct place to handle this specific redirect for pending customers.
+  if (profile.role === 'customer' && profile.approval_status !== 'approved') {
+    redirect('/pending-approval');
   }
 
   return (

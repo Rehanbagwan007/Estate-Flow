@@ -10,7 +10,6 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // The main layout now handles the user check, so a full redirect is safe here.
   if (!user) {
     redirect('/login');
   }
@@ -21,9 +20,10 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
-  // If the profile is missing after login, it's a valid reason to redirect.
   if (!profile) {
-    return redirect('/login?error=profile_not_found');
+    // If the profile is still missing, the layout will handle the redirect
+    // to the pending page. This check is a safeguard.
+    return redirect('/pending-approval');
   }
 
   // This is the correct place to handle this specific redirect.
