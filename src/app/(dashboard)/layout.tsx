@@ -23,7 +23,7 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('first_name, last_name, email, role, approval_status')
+    .select('first_name, last_name, email, role')
     .eq('id', user.id)
     .single();
   
@@ -31,11 +31,9 @@ export default async function DashboardLayout({
     // This can happen if the profile creation failed or is delayed.
     // Signing out and redirecting to login with an error is a safe fallback.
     await supabase.auth.signOut();
-    return redirect('/login?message=Profile not found. Please log in again.');
+    return redirect('/login?message=Profile not found. Please try logging in again.');
   }
   
-  // NOTE: All approval logic is removed. The dashboard is accessible if the profile exists.
-
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <Sidebar userRole={profile.role}/>

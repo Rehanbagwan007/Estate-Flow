@@ -54,7 +54,8 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Just refresh the session. DO NOT REDIRECT HERE.
+  // Refresh session if expired - required for Server Components
+  // https://supabase.com/docs/guides/auth/server-side/nextjs
   await supabase.auth.getUser()
 
   return response
