@@ -9,10 +9,16 @@ import { SalesManagerDashboard } from './sales-manager-dashboard';
 import { SalesExecutiveDashboard } from './sales-executive-dashboard';
 import type { EnrichedProperty, EnrichedInterest, EnrichedAppointment } from './customer-dashboard'
 import { cookies } from 'next/headers';
+import type { Profile, Property, PropertyInterest, Appointment, CallLog } from '@/lib/types';
 
 interface RoleDashboardProps {
   userRole: string;
   userId: string;
+}
+
+interface EnrichedInterestForAdmin extends PropertyInterest {
+    property: Property | null;
+    customer: Profile | null;
 }
 
 export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
@@ -23,7 +29,27 @@ export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
     case 'super_admin':
       return <SuperAdminDashboard userId={userId} />;
     case 'admin':
-      return <AdminDashboard userId={userId} />;
+      const [
+        pendingUsersResult,
+        propertiesResult,
+        propertyInterestsResult,
+        appointmentsResult,
+        callLogsResult
+      ] = await Promise.all([
+        supabase.from('profiles').select('*').eq('approval_status', 'pending'),
+        supabase.from('properties').select('*'),
+        supabase.from('property_interests').select('*, property:properties(*), customer:profiles(*)'),
+        supabase.from('appointments').select('*, agent:profiles(*), customer:profiles(*)'),
+        supabase.from('call_logs').select('*, agent:profiles(*), customer:profiles(*)')
+      ]);
+      return <AdminDashboard 
+        userId={userId}
+        initialPendingUsers={pendingUsersResult.data || []}
+        initialProperties={propertiesResult.data || []}
+        initialPropertyInterests={(propertyInterestsResult.data as EnrichedInterestForAdmin[]) || []}
+        initialAppointments={appointmentsResult.data || []}
+        initialCallLogs={callLogsResult.data || []}
+        />;
     case 'agent':
       return <AgentDashboard userId={userId} />;
     case 'caller_1':
@@ -36,7 +62,7 @@ export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
       return <SalesExecutiveDashboard userId={userId} />;
     case 'customer':
       const [
-        propertiesResult,
+        propertiesResultCust,
         myInterestsResult,
         myAppointmentsResult
       ] = await Promise.all([
@@ -47,7 +73,7 @@ export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
 
       return <CustomerDashboard 
         userId={userId} 
-        initialProperties={(propertiesResult.data as EnrichedProperty[]) || []}
+        initialProperties={(propertiesResultCust.data as EnrichedProperty[]) || []}
         initialMyInterests={(myInterestsResult.data as EnrichedInterest[]) || []}
         initialMyAppointments={(myAppointmentsResult.data as EnrichedAppointment[]) || []}
       />;

@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { expressInterest } from '@/components/dashboard/actions/custumer-interest';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Building2, 
@@ -23,6 +22,7 @@ import { useInterestStore } from '@/lib/store/interest-store';
 import { usePropertyStore } from '@/lib/store/property-store';
 import { useAppointmentStore } from '@/lib/store/appointment-store';
 import Image from 'next/image';
+import { PropertyInterestForm } from '../properties/property-interest-form';
 
 export interface EnrichedProperty extends Property {
     property_media?: { file_path: string }[];
@@ -62,32 +62,21 @@ export function CustomerDashboard({
     }
   }, [initialMyInterests, initialProperties, initialMyAppointments, setInterests, setProperties, setAppointments]);
 
-  const [isPending, startTransition] = useTransition();
-  const [submittingId, setSubmittingId] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [selectedProperty, setSelectedProperty] = useState<EnrichedProperty | null>(null);
+  const [showInterestForm, setShowInterestForm] = useState(false);
 
-  const handleInterestClick = (propertyId: string) => {
-    setSubmittingId(propertyId);
-    startTransition(async () => {
-      const result = await expressInterest(propertyId);
-
-      if (result.success && result.interest) {
-        toast({
-          title: 'Success!',
-          description: result.message,
-        });
-        addInterest(result.interest as EnrichedInterest);
-      } else {
-        toast({
-          title: 'Uh oh!',
-          description: result.message,
-          variant: 'destructive',
-        });
-      }
-      setSubmittingId(null);
+  const handleInterestSuccess = (newInterest: PropertyInterest) => {
+    addInterest({ ...newInterest, property: selectedProperty || undefined });
+    toast({
+      title: 'Success!',
+      description: 'Your interest has been submitted. Our team will contact you shortly.',
     });
+    setShowInterestForm(false);
+    setSelectedProperty(null);
   };
   
+  const { toast } = useToast();
+
   const totalProperties = properties.length;
   const myInterestsCount = myInterests.length;
   const upcomingAppointments = myAppointments.filter(a => 
@@ -103,6 +92,7 @@ export function CustomerDashboard({
         </p>
       </div>
 
+      {/* Placeholder for future filter component */}
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
@@ -182,74 +172,88 @@ export function CustomerDashboard({
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {properties.slice(0, 6).map((property) => (
-                <div key={property.id} className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="aspect-video bg-gray-200 relative">
-                    {property?.property_media && property.property_media.length > 0 ? (
-                      <Image 
-                        src={property.property_media[0].file_path} 
-                        alt={property.title || 'Property Image'}
-                        width={400}
-                        height={225}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        <Building2 className="h-12 w-12" />
-                      </div>
-                    )}
-                    <Badge className="absolute top-2 right-2 bg-white text-black">
-                      {property.status}
-                    </Badge>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{property.city}, {property.state}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
-                      <DollarSign className="h-4 w-4" />
-                      <span className="font-semibold text-lg">₹{Number(property.price || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleInterestClick(property.id)}
-                        disabled={isPending || myInterests.some(i => i.property_id === property.id)}
-                      >
-                        {submittingId === property.id ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              {properties.slice(0, 6).map((property) => {
+                const isInterested = myInterests.some(i => i.property_id === property.id);
+                return (
+                    <div key={property.id} className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+                        <div className="aspect-video bg-gray-200 relative">
+                        {property?.property_media && property.property_media.length > 0 ? (
+                            <Image 
+                            src={property.property_media[0].file_path} 
+                            alt={property.title || 'Property Image'}
+                            width={400}
+                            height={225}
+                            className="w-full h-full object-cover"
+                            />
                         ) : (
-                            <Heart className="h-4 w-4 mr-1" />
+                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <Building2 className="h-12 w-12" />
+                            </div>
                         )}
-                        {myInterests.some(i => i.property_id === property.id) ? 'Interested' : "I'm Interested"}
-                      </Button>
-                      
-                       <Dialog>
-                        <DialogTrigger asChild>
-                            <Button size="sm" variant="outline">
-                                <Eye className="h-4 w-4 mr-1" />
-                                View Details
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[625px]">
-                            <DialogHeader>
-                                <DialogTitle>{property.title}</DialogTitle>
-                                <DialogDescription>{property.address}, {property.city}, {property.state}</DialogDescription>
-                            </DialogHeader>
-                            <p>{property.description}</p>
-                        </DialogContent>
-                       </Dialog>
+                        <Badge className="absolute top-2 right-2 bg-white text-black">
+                            {property.status}
+                        </Badge>
+                        </div>
+                        <div className="p-4">
+                            <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+                                <MapPin className="h-4 w-4" />
+                                <span>{property.city}, {property.state}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+                                <DollarSign className="h-4 w-4" />
+                                <span className="font-semibold text-lg">₹{Number(property.price || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button 
+                                    size="sm" 
+                                    className="flex-1"
+                                    onClick={() => { setSelectedProperty(property); setShowInterestForm(true); }}
+                                    disabled={isInterested}
+                                >
+                                    <Heart className="h-4 w-4 mr-1" />
+                                    {isInterested ? 'Interested' : "I'm Interested"}
+                                </Button>
+                                <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button size="sm" variant="outline">
+                                        <Eye className="h-4 w-4 mr-1" />
+                                        View Details
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[625px]">
+                                    <DialogHeader>
+                                        <DialogTitle>{property.title}</DialogTitle>
+                                        <DialogDescription>{property.address}, {property.city}, {property.state}</DialogDescription>
+                                    </DialogHeader>
+                                    <p>{property.description}</p>
+                                </DialogContent>
+                                </Dialog>
+                            </div>
+                        </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
+      {selectedProperty && (
+        <Dialog open={showInterestForm} onOpenChange={(isOpen) => {
+            if (!isOpen) {
+                setShowInterestForm(false);
+                setSelectedProperty(null);
+            }
+        }}>
+            <DialogContent className="sm:max-w-md">
+                <PropertyInterestForm
+                    propertyId={selectedProperty.id}
+                    propertyTitle={selectedProperty.title}
+                    onSuccess={handleInterestSuccess}
+                />
+            </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
