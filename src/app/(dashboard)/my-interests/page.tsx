@@ -31,27 +31,33 @@ export default async function MyInterestsPage() {
   }
 
   // Get user's property interests
-  const { data: interests } = await supabase
+  // BUG FIX: Removed 'property_type' from the selection as it does not exist in the 'properties' table schema.
+  const { data: interests, error } = await supabase
     .from('property_interests')
     .select(`
       id,
       interest_level,
-      message,
+       message,
       preferred_meeting_time,
       status,
       created_at,
-      properties (
+      properties!inner (
         id,
         title,
         price,
-        location,
-        property_type,
+        address,
+        city,
+        state,
         bedrooms,
         bathrooms
       )
     `)
     .eq('customer_id', user.id)
     .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Error fetching interests:", error);
+    }
 
   return (
     <div className="space-y-6">
@@ -116,7 +122,7 @@ export default async function MyInterestsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {interests?.length === 0 ? (
+            {!interests || interests.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Heart className="mx-auto h-12 w-12 mb-4 opacity-50" />
                 <p>No property interests yet.</p>
@@ -130,12 +136,12 @@ export default async function MyInterestsPage() {
                       <Building2 className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">{interest.properties?.title}</p>
+                      <p className="font-medium">{interest.properties?.title || 'Property not available'}</p>
                       <p className="text-sm text-muted-foreground">
-                        {interest.properties?.location} • ₹{interest.properties?.price?.toLocaleString()}
+                        {interest.properties?.city ? `${interest.properties.city}, ${interest.properties.state} • ₹${interest.properties.price?.toLocaleString()}` : 'Details not available'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {interest.properties?.bedrooms} bed • {interest.properties?.bathrooms} bath
+                        {interest.properties ? `${interest.properties.bedrooms} bed • ${interest.properties.bathrooms} bath` : ''}
                       </p>
                     </div>
                   </div>
@@ -144,7 +150,7 @@ export default async function MyInterestsPage() {
                     <Badge variant={interest.status === 'contacted' ? 'default' : 'secondary'}>
                       {interest.status}
                     </Badge>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" disabled={!interest.properties}>
                       View Details
                     </Button>
                   </div>

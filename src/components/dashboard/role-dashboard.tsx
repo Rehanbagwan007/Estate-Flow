@@ -14,7 +14,7 @@ interface RoleDashboardProps {
 }
 
 export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   switch (userRole) {
     case 'super_admin':
@@ -32,7 +32,23 @@ export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
     case 'sales_executive_2':
       return <SalesExecutiveDashboard userId={userId} />;
     case 'customer':
-      return <CustomerDashboard userId={userId} />;
+      // BUG FIX: Using the correct table name 'property_interests' from your schema.
+      const [
+        propertiesResult,
+        myInterestsResult,
+        myAppointmentsResult
+      ] = await Promise.all([
+        (await supabase).from('properties').select('*, property_media(*)').eq('status', 'Available'),
+        (await supabase).from('property_interests').select('*, property:properties(*)').eq('customer_id', userId),
+        (await supabase).from('appointments').select('*, agent:profiles(*)').eq('customer_id', userId)
+      ]);
+
+      return <CustomerDashboard 
+        userId={userId} 
+        initialProperties={propertiesResult.data || []}
+        initialMyInterests={myInterestsResult.data || []}
+        initialMyAppointments={myAppointmentsResult.data || []}
+      />;
     default:
       redirect('/login');
   }

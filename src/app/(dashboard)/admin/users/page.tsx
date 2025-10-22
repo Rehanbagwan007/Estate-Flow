@@ -4,6 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, UserPlus, Shield, UserCheck } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { AddUserForm } from "@/app/(dashboard)/admin/users/add-user-form"
 
 export default async function AdminUsersPage() {
   const supabase = await createClient();
@@ -25,15 +34,13 @@ export default async function AdminUsersPage() {
     redirect('/login');
   }
 
-  // Check if user has admin permissions
   if (!['super_admin', 'admin'].includes(profile.role)) {
     redirect('/dashboard');
   }
 
-  // Get all users
   const { data: users } = await supabase
     .from('profiles')
-    .select('id, first_name, last_name, email, role, created_at')
+    .select('id, first_name, last_name, email, phone, role, created_at')
     .order('created_at', { ascending: false });
 
   return (
@@ -45,10 +52,23 @@ export default async function AdminUsersPage() {
             Manage users and their roles in the system
           </p>
         </div>
-        <Button>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add User
-        </Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Add User
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Create New User</DialogTitle>
+              <DialogDescription>
+                Fill out the form below to create a new user account.
+              </DialogDescription>
+            </DialogHeader>
+            <AddUserForm />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -64,7 +84,6 @@ export default async function AdminUsersPage() {
             </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Admins</CardTitle>
@@ -79,7 +98,6 @@ export default async function AdminUsersPage() {
             </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Agents</CardTitle>
@@ -116,6 +134,7 @@ export default async function AdminUsersPage() {
                   <div>
                     <p className="font-medium">{user.first_name} {user.last_name}</p>
                     <p className="text-sm text-muted-foreground">{user.email}</p>
+                    <p className="text-sm text-muted-foreground">{user.phone}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -132,3 +151,4 @@ export default async function AdminUsersPage() {
     </div>
   );
 }
+
