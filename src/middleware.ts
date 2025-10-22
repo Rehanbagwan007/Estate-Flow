@@ -1,37 +1,59 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-// This is a temporary solution to a bug in the Supabase library.
-// It should be removed once the library is updated.
-const createSupabaseMiddlewareClient = (req: NextRequest, res: NextResponse) => {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name) => req.cookies.get(name)?.value,
-        set: (name, value, options) => {
-          req.cookies.set({ name, value, ...options });
-          res.cookies.set({ name, value, ...options });
-        },
-        remove: (name, options) => {
-          req.cookies.set({ name, value: '', ...options });
-          res.cookies.set({ name, value: '', ...options });
-        },
-      },
-    }
-  );
-};
-
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next({
+  let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
 
-  const supabase = createSupabaseMiddlewareClient(request, response);
-
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+        },
+      },
+    }
+  );
+  
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -48,6 +70,10 @@ export async function middleware(request: NextRequest) {
 
   // If user is not authenticated and tries to access a protected route, redirect to login
   if (!user && !isAuthRoute) {
+    // Let the root page handle redirection if it's the target
+    if (pathname === '/') {
+        return response;
+    }
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
@@ -58,6 +84,7 @@ export async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single();
     
+    // If a profile exists, enforce role-based rules
     if (profile) {
         if (profile.role === 'customer') {
             if (profile.approval_status !== 'approved' && pathname !== '/pending-approval') {
@@ -71,13 +98,15 @@ export async function middleware(request: NextRequest) {
                 return NextResponse.redirect(new URL('/', request.url));
             }
         }
-    } else if (!isAuthRoute) {
-        // This case handles a user that exists in auth but not in profiles table.
-        // It shouldn't happen with the trigger in place, but as a safeguard, log them out.
-        await supabase.auth.signOut();
-        return NextResponse.redirect(new URL('/login?error=profile_not_found', request.url));
-    }
+    } 
+    // If no profile is found for an authenticated user, it might be a race condition on signup.
+    // Instead of logging them out, we'll let the request proceed. 
+    // The page-level checks will handle any required redirection if the profile is still missing.
+    // The previous logic that caused a redirect loop was here.
   }
+
+  // Refresh the session token
+  await supabase.auth.getSession();
 
   return response;
 }
