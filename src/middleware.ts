@@ -1,12 +1,13 @@
-import { type NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
-  });
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,6 +18,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
+          // If the cookie is updated, update the cookies for the request and response
           request.cookies.set({
             name,
             value,
@@ -34,6 +36,7 @@ export async function middleware(request: NextRequest) {
           })
         },
         remove(name: string, options: CookieOptions) {
+          // If the cookie is removed, update the cookies for the request and response
           request.cookies.set({
             name,
             value: '',
@@ -52,16 +55,32 @@ export async function middleware(request: NextRequest) {
         },
       },
     }
-  );
-  
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  )
+
+  // Refresh session if expired - required for Server Components
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl;
+
+  // Define routes that are publicly accessible
+  const publicRoutes = ['/login', '/signup'];
+
+  // If user is logged in and tries to access a public route, redirect to dashboard
+  if (user && publicRoutes.includes(pathname)) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // If user is not logged in and tries to access a protected route, redirect to login
+  if (!user && !publicRoutes.includes(pathname)) {
+    // Allow root access to redirect to dashboard (or login if no user)
+    if (pathname === '/') return response;
+    
+    // Protect other routes
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
   
   // This logic is for a customer approval flow which is no longer active.
-  // It is safe to keep but does not impact the current redirect issue.
+  // It can be safely removed, but leaving it does not cause harm.
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -77,25 +96,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const isAuthRoute = pathname === '/login' || pathname === '/signup';
 
-  // If user is logged in and tries to access an auth route, redirect to the dashboard.
-  if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  // If user is not logged in and is trying to access a protected route, redirect to login.
-  if (!user && !isAuthRoute) {
-     // Allow access to root page for redirection, but protect others.
-    if (pathname !== '/') {
-        return NextResponse.redirect(new URL('/login', request.url));
-    }
-  }
-  
-  // Refresh the session token.
-  await supabase.auth.getSession();
-
-  return response;
+  return response
 }
 
 export const config = {
@@ -109,4 +111,4 @@ export const config = {
      */
     '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-};
+}
