@@ -1,3 +1,4 @@
+
 'use server';
 
 import { z } from 'zod';
@@ -38,12 +39,11 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         email: values.email,
         phone: values.phone,
         password: values.password,
-        email_confirm: true, // Auto-confirm user's email
+        email_confirm: true,
         user_metadata: {
             first_name: values.firstName,
             last_name: values.lastName,
             role: values.role,
-            phone: values.phone,
         },
     });
 
@@ -56,29 +56,30 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
     if (!user) {
         return { error: 'User was not created in Auth.' };
     }
-
-    // The `handle_new_user` trigger in `0002_extend_schema_for_crm.sql` creates the profile.
-    // We now need to update it to set the approval_status correctly.
-
-    // Step 2: Set the approval status based on the role.
-    const isAdminRole = ['super_admin', 'admin'].includes(values.role);
-    // Admins are auto-approved, others are pending.
-    const approvalStatus = isAdminRole ? 'approved' : 'pending';
     
+    // Step 2: Manually create the profile in public.profiles table.
+    // This is more reliable than depending on a database trigger.
+    const isAdminRole = ['super_admin', 'admin'].includes(values.role);
+    const approvalStatus = isAdminRole ? 'approved' : 'pending';
+
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .update({
+      .insert({
+        id: user.id,
+        first_name: values.firstName,
+        last_name: values.lastName,
+        email: values.email,
+        phone: values.phone,
+        role: values.role,
         approval_status: approvalStatus,
-      })
-      .eq('id', user.id);
+      });
 
     if (profileError) {
-        console.error('Error setting initial profile status:', profileError);
-        // If this fails, we should delete the auth user to prevent an orphaned user
+        console.error('Error creating user profile:', profileError);
+        // If profile creation fails, we must delete the auth user to prevent an orphaned account.
         await supabaseAdmin.auth.admin.deleteUser(user.id);
-        return { error: `User created in auth, but failed to set profile status: ${profileError.message}` };
+        return { error: `User created in auth, but failed to create profile: ${profileError.message}` };
     }
-
 
     // Step 3: Send the credentials email using Resend
     try {
@@ -95,7 +96,6 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
     } catch (emailError) {
         console.error('Email sending error:', emailError);
         // Even if the email fails, we don't want to block the user creation.
-        // You might want to add more robust error handling here.
         return { data: user, message: 'User was created, but the credential email could not be sent.' };
     }
     
