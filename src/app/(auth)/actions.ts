@@ -14,6 +14,7 @@ export async function login(values: z.infer<typeof loginSchema>) {
     return { error: error.message };
   }
   
+  // Do not redirect here. The middleware will handle redirecting to the dashboard.
   return { success: true };
 }
 

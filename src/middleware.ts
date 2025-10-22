@@ -1,14 +1,8 @@
-import { type NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/middleware'
+import { type NextRequest } from 'next/server';
+import { updateSession } from '@/lib/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
-  const { supabase, response } = createClient(request)
-
-  // Refresh session if expired - required for Server Components
-  // https://supabase.com/docs/guides/auth/auth-helpers/nextjs#managing-session-with-middleware
-  await supabase.auth.getSession()
-
-  return response
+  return await updateSession(request)
 }
 
 export const config = {
@@ -22,4 +16,4 @@ export const config = {
      */
     '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-}
+};

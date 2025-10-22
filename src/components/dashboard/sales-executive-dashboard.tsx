@@ -11,15 +11,13 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react';
-import { cookies } from 'next/headers';
 
 interface SalesExecutiveDashboardProps {
   userId: string;
 }
 
 export async function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   // Fetch sales executive data
   const [

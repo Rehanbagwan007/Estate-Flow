@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AddUserForm } from "@/app/(dashboard)/admin/users/add-user-form"
 import { EditUserForm } from "@/app/(dashboard)/admin/users/edit-user-form"
-import { cookies } from 'next/headers';
 import { deleteUser } from './action';
 import type { Profile } from '@/lib/types';
 import {
@@ -36,8 +35,7 @@ import {
   } from "@/components/ui/alert-dialog"
 
 export default async function AdminUsersPage() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser()

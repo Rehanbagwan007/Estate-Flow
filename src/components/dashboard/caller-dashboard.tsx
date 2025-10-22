@@ -11,15 +11,13 @@ import {
   Pause,
   Volume2
 } from 'lucide-react';
-import { cookies } from 'next/headers';
 
 interface CallerDashboardProps {
   userId: string;
 }
 
 export async function CallerDashboard({ userId }: CallerDashboardProps) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   // Fetch caller-specific data
   const [

@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/server';
 import { propertySchema } from '@/schemas';
 import { revalidatePath } from 'next/cache';
 import type { Property } from '@/lib/types';
-import { cookies } from 'next/headers';
 
 // --- Helper Functions & Interfaces ---
 
@@ -78,8 +77,7 @@ export async function saveProperty(
   prevState: { message: string; success?: boolean },
   formData: FormData
 ) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

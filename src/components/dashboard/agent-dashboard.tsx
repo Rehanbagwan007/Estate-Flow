@@ -12,15 +12,13 @@ import {
   TrendingUp,
   MapPin
 } from 'lucide-react';
-import { cookies } from 'next/headers';
 
 interface AgentDashboardProps {
   userId: string;
 }
 
 export async function AgentDashboard({ userId }: AgentDashboardProps) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   // Fetch agent-specific data
   const [

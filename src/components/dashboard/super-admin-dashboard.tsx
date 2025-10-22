@@ -12,15 +12,13 @@ import {
   Activity,
   BarChart3
 } from 'lucide-react';
-import { cookies } from 'next/headers';
 
 interface SuperAdminDashboardProps {
   userId: string;
 }
 
 export async function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   // Fetch comprehensive analytics data
   const [

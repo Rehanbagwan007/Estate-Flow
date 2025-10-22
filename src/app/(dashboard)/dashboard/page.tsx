@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { SuperAdminDashboard } from '@/components/dashboard/super-admin-dashboard';
 import { AdminDashboard } from '@/components/dashboard/admin-dashboard';
 import { AgentDashboard } from '@/components/dashboard/agent-dashboard';
@@ -10,8 +9,7 @@ import { SalesManagerDashboard } from '@/components/dashboard/sales-manager-dash
 import { SalesExecutiveDashboard } from '@/components/dashboard/sales-executive-dashboard';
 
 export default async function DashboardPage() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

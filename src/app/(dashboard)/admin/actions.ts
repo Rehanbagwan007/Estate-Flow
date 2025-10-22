@@ -2,12 +2,10 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
 import type { Task } from '@/lib/types';
 
 export async function getTeamMembers(roles: string[]) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('profiles')
     .select('id, first_name, last_name, role')
@@ -26,8 +24,7 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
     console.log('Agent ID to assign:', agentId);
     console.log('Task Due Date:', taskDueDate);
 
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
 
