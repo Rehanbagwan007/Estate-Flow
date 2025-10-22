@@ -19,22 +19,18 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile } = await supabase
     .from('profiles')
     .select('first_name, last_name, email, role, approval_status')
     .eq('id', user.id)
     .single();
   
-  if (profileError || !profile) {
-    // This can happen in a race condition right after signup.
-    // Instead of redirecting here (which causes loops), we'll let the 
-    // dashboard page handle the redirect to the pending-approval page.
-    // This prevents a layout-vs-middleware conflict.
-    return redirect('/pending-approval');
+  // If the profile doesn't exist yet (e.g., right after signup),
+  // we can't render the sidebar/header. The dashboard page will handle the redirect.
+  // Returning children directly avoids a render error for a moment.
+  if (!profile) {
+    return <>{children}</>;
   }
-
-  // The conditional redirect for pending customers is now handled in the dashboard page itself.
-  // This layout is now only responsible for providing the structure.
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">

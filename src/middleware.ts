@@ -62,8 +62,6 @@ export async function middleware(request: NextRequest) {
 
   const authRoutes = ['/login', '/signup'];
   const isAuthRoute = authRoutes.includes(pathname);
-
-  // This is the critical check.
   const isPendingApprovalRoute = pathname === '/pending-approval';
 
   // If user is logged in and tries to access an auth page, redirect to home.
@@ -71,7 +69,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // If user is not logged in and is trying to access a protected route, redirect to login.
+  // If user is not logged in and is trying to access a protected route (that isn't public), redirect to login.
   if (!user && !isAuthRoute && !isPendingApprovalRoute) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
