@@ -13,9 +13,10 @@ import {
   CheckCircle,
   UserPlus,
   Building,
-  Loader2
+  Loader2,
+  Clock
 } from 'lucide-react';
-import type { Profile, Property, PropertyInterest, Appointment, CallLog, AgentAssignment } from '@/lib/types';
+import type { Profile, Property, PropertyInterest, Appointment, CallLog, AgentAssignment, Task } from '@/lib/types';
 import { AssignAgentDialog } from './assign-agent-dialog';
 
 interface EnrichedInterest extends PropertyInterest {
@@ -59,10 +60,12 @@ export function AdminDashboard({
   ).length;
   const totalAppointments = appointments.length;
 
-  const handleAssignmentSuccess = (interestId: string) => {
+  const handleAssignmentSuccess = (interestId: string, assignedTask: Task) => {
     setPropertyInterests(prev => prev.map(interest => 
         interest.id === interestId ? { ...interest, status: 'assigned' } : interest
     ));
+    // Optionally, you could add the new task to a local state if you want to display it
+    // on the admin dashboard immediately without a page refresh.
     setSelectedInterest(null);
   };
 
@@ -205,9 +208,17 @@ export function AdminDashboard({
                         <p className="text-sm text-muted-foreground">
                           by {interest.customer?.first_name} {interest.customer?.last_name}
                         </p>
-                        <Badge variant="outline" className="mt-1">
-                          {interest.interest_level}
-                        </Badge>
+                        <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="mt-1">
+                                {interest.interest_level}
+                            </Badge>
+                            {interest.preferred_meeting_time && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Prefers: {new Date(interest.preferred_meeting_time).toLocaleString()}
+                                </span>
+                            )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex space-x-2">
