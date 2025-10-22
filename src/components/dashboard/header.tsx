@@ -125,11 +125,9 @@ export function Header({ user, profile }: HeaderProps) {
           <DropdownMenuItem>Support</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <form action={logout} className="w-full">
+            <form action={logout}>
               <button type="submit" className="w-full text-left">
-                <Link href="/login" className="w-full">
                 Logout
-                </Link>
               </button>
             </form>
           </DropdownMenuItem>
