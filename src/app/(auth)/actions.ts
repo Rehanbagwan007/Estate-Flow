@@ -3,7 +3,6 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { loginSchema } from '@/schemas';
-import { redirect } from 'next/navigation';
 import { signupSchema } from '@/schemas';
 
 export async function login(values: z.infer<typeof loginSchema>) {
@@ -14,7 +13,6 @@ export async function login(values: z.infer<typeof loginSchema>) {
     return { error: error.message };
   }
 
-  // A redirect is no longer needed here. The client will handle navigation.
   return { success: true };
 }
 
