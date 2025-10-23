@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { loginSchema } from '@/schemas';
 import { redirect } from 'next/navigation';
+import { signupSchema } from '@/schemas';
 
 export async function login(values: z.infer<typeof loginSchema>) {
   const supabase = createClient();
@@ -12,12 +13,8 @@ export async function login(values: z.infer<typeof loginSchema>) {
   if (error) {
     return { error: error.message };
   }
-  
 
-  // After a successful login, the user should be redirected.
-  // The middleware will handle unauthenticated access, but after login,
-  // we want to make sure the user lands on the dashboard.
-  return redirect('/dashboard');
+  // A redirect is no longer needed here, the page will refresh and middleware/layout will handle it.
 }
 
 export async function signup(values: z.infer<typeof signupSchema>) {
@@ -39,4 +36,5 @@ export async function signup(values: z.infer<typeof signupSchema>) {
   }
 
   // The handle_new_user trigger in schema.sql will create the profile.
-  return { data }}
+  return { data };
+}
