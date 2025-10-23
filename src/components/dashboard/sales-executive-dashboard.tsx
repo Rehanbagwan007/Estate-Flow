@@ -13,13 +13,17 @@ import {
   ListTodo
 } from 'lucide-react';
 import { ExotelCallInterface } from '../calls/exotel-call-interface';
-import type { AgentAssignment, Appointment, CallLog, Profile, Lead, Task } from '@/lib/types';
+import type { AgentAssignment, Appointment, CallLog, Profile, Lead, Task, Property } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { TaskList } from '../tasks/task-list';
 
-
 interface EnrichedAssignment extends AgentAssignment {
     customer: Profile;
+}
+
+interface EnrichedTask extends Task {
+    property?: Property | null;
+    customer?: Profile | null;
 }
 
 interface SalesExecutiveDashboardProps {
@@ -31,7 +35,7 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [callLogs, setCallLogs] = useState<CallLog[]>([]);
     const [leads, setLeads] = useState<Lead[]>([]);
-    const [tasks, setTasks] = useState<Task[]>([]);
+    const [tasks, setTasks] = useState<EnrichedTask[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const [callTarget, setCallTarget] = useState<{ customerId: string; customerPhone: string; customerName: string } | null>(null);
@@ -39,39 +43,52 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
     useEffect(() => {
         const supabase = createClient();
         const fetchData = async () => {
-        setIsLoading(true);
-        const [
-            assignmentsResult,
-            appointmentsResult,
-            callLogsResult,
-            leadsResult,
-            tasksResult
-        ] = await Promise.all([
-            supabase.from('agent_assignments').select('*, customer:profiles(*)').eq('agent_id', userId),
-            supabase.from('appointments').select('*, customer:profiles(*)').eq('agent_id', userId),
-            supabase.from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId),
-            supabase.from('leads').select('*').eq('assigned_to', userId),
-            supabase.from('tasks').select('*').eq('assigned_to', userId),
-        ]);
+            setIsLoading(true);
+            const [
+                assignmentsResult,
+                appointmentsResult,
+                callLogsResult,
+                leadsResult,
+                tasksResult
+            ] = await Promise.all([
+                supabase.from('agent_assignments').select('*, customer:profiles(*)').eq('agent_id', userId),
+                supabase.from('appointments').select('*, customer:profiles(*)').eq('agent_id', userId),
+                supabase.from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId),
+                supabase.from('leads').select('*').eq('assigned_to', userId),
+                supabase.from('tasks')
+                    .select(`
+                        *,
+                        property:related_property_id(*),
+                        assignment:agent_assignments(
+                            *,
+                            customer:profiles(*)
+                        )
+                    `)
+                    .eq('assigned_to', userId)
+                    .order('created_at', { ascending: false }),
+            ]);
 
-        setAssignments((assignmentsResult.data as EnrichedAssignment[]) || []);
-        setAppointments(appointmentsResult.data || []);
-        setCallLogs(callLogsResult.data || []);
-        setLeads(leadsResult.data || []);
-        setTasks(tasksResult.data || []);
-        setIsLoading(false);
+            setAssignments((assignmentsResult.data as EnrichedAssignment[]) || []);
+            setAppointments(appointmentsResult.data || []);
+            setCallLogs(callLogsResult.data || []);
+            setLeads(leadsResult.data || []);
+            
+            const enrichedTasks = (tasksResult.data || []).map((task: any) => ({
+                ...task,
+                property: task.property,
+                customer: task.assignment?.customer,
+            })) as EnrichedTask[];
+            setTasks(enrichedTasks);
+
+            setIsLoading(false);
         };
 
         fetchData();
     }, [userId]);
     
-    const handleCallClick = (assignment: EnrichedAssignment) => {
-        if (assignment.customer?.phone) {
-            setCallTarget({
-                customerId: assignment.customer_id,
-                customerPhone: assignment.customer.phone,
-                customerName: `${assignment.customer.first_name} ${assignment.customer.last_name}`
-            });
+    const handleCallClick = (target: { customerId: string; customerPhone: string; customerName: string }) => {
+        if (target.customerPhone) {
+            setCallTarget(target);
         } else {
             alert('Customer phone number is not available.');
         }
@@ -97,7 +114,6 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
     if (isLoading) {
         return <div>Loading dashboard...</div>;
     }
-
 
   return (
     <div className="space-y-6">
@@ -170,7 +186,7 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
         onCallEnd={handleCallEnd}
       />
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6">
             {/* My Tasks */}
             <Card>
                 <CardHeader>
@@ -185,54 +201,7 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
                     No tasks assigned yet.
                     </div>
                 ) : (
-                    <TaskList tasks={tasks.slice(0, 5)} />
-                )}
-                </CardContent>
-            </Card>
-
-            {/* My Assignments */}
-            <Card>
-                <CardHeader>
-                <CardTitle>My Customer Assignments</CardTitle>
-                <CardDescription>
-                    Customers assigned to you for follow-up
-                </CardDescription>
-                </CardHeader>
-                <CardContent>
-                {assignments.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                    No assignments yet
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                    {assignments.slice(0, 5).map((assignment) => (
-                        <div key={assignment.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium">
-                                {assignment.customer?.first_name?.[0]}{assignment.customer?.last_name?.[0]}
-                            </span>
-                            </div>
-                            <div>
-                            <p className="font-medium">
-                                {assignment.customer?.first_name} {assignment.customer?.last_name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">{assignment.customer?.email}</p>
-                            <div className="flex gap-2 mt-1">
-                                <Badge variant="outline">{assignment.priority}</Badge>
-                                <Badge variant="secondary">{assignment.status}</Badge>
-                            </div>
-                            </div>
-                        </div>
-                        <div className="flex space-x-2">
-                             <Button size="sm" variant="outline" onClick={() => handleCallClick(assignment)}>
-                                <Phone className="h-4 w-4 mr-1" />
-                                Call
-                            </Button>
-                        </div>
-                        </div>
-                    ))}
-                    </div>
+                    <TaskList tasks={tasks} onCall={handleCallClick} />
                 )}
                 </CardContent>
             </Card>
@@ -240,5 +209,3 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
     </div>
   );
 }
-
-    
