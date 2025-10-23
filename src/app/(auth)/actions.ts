@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/app/(dashboard)/admin/users/action';
 import { loginSchema, signupSchema } from '@/schemas';
 import { redirect } from 'next/navigation';
 
@@ -17,18 +18,20 @@ export async function login(values: z.infer<typeof loginSchema>) {
     return { error: 'Login successful, but no user object was returned.' };
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const supabaseAdmin = createServiceRoleClient();
+  
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
     .select('id')
     .eq('id', user.id)
     .single();
 
-  if (profileError && profileError.code !== 'PGRST116') {
+  if (profileError && profileError.code !== 'PGRST116') { // PGRST116 = no rows returned
     return { error: `Database error checking for profile: ${profileError.message}` };
   }
 
   if (!profile) {
-    const { error: createProfileError } = await supabase
+    const { error: createProfileError } = await supabaseAdmin
       .from('profiles')
       .insert({
         id: user.id,
@@ -44,9 +47,7 @@ export async function login(values: z.infer<typeof loginSchema>) {
     }
   }
 
-  // The redirect will be handled by the middleware after the client reloads.
-  // We just need to signal success to the client form.
-  return { success: true };
+  redirect('/dashboard');
 }
 
 export async function signup(values: z.infer<typeof signupSchema>) {

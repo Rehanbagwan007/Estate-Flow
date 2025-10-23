@@ -7,7 +7,7 @@ import { signupSchema } from '@/schemas';
 import { Resend } from 'resend';
 import { CredentialsEmail } from '@/components/emails/redentials-email';
 
-const createAdminClient = () => {
+export const createServiceRoleClient = () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -24,7 +24,7 @@ const createAdminClient = () => {
 };
 
 export async function createUser(values: z.infer<typeof signupSchema>) {
-    const supabaseAdmin = createAdminClient();
+    const supabaseAdmin = createServiceRoleClient();
     const resendApiKey = process.env.RESEND_API_KEY;
 
     if (!resendApiKey) {
@@ -81,7 +81,7 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
 }
 
 export async function updateUserRole(userId: string, role: z.infer<typeof signupSchema>['role']) {
-    const supabaseAdmin = createAdminClient();
+    const supabaseAdmin = createServiceRoleClient();
   
     // Update role in auth metadata
     const { data: user, error: authError } = await supabaseAdmin.auth.admin.updateUserById(
@@ -111,7 +111,7 @@ export async function updateUserRole(userId: string, role: z.infer<typeof signup
 }
   
 export async function deleteUser(userId: string) {
-    const supabaseAdmin = createAdminClient();
+    const supabaseAdmin = createServiceRoleClient();
 
     // The trigger `delete_user_profile_on_auth_user_delete` in schema.sql
     // should automatically delete the corresponding profile.
