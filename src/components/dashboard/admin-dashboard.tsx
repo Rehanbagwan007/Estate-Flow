@@ -48,7 +48,7 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
         supabase.from('profiles').select('*').eq('approval_status', 'pending'),
         supabase.from('properties').select('*'),
         supabase.from('property_interests').select('*, properties:property_id(*), profiles:customer_id(*)'),
-        supabase.from('appointments').select('*, profiles!appointments_agent_id_fkey(*), profiles!appointments_customer_id_fkey(*)'),
+        supabase.from('appointments').select('*, profiles!appointments_agent_id_fkey(*), customer:profiles!appointments_customer_id_fkey(*)'),
       ]);
 
       setPendingUsers(pendingUsersResult.data || []);
