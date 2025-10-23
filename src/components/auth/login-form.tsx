@@ -17,13 +17,12 @@ import { Input } from '@/components/ui/input';
 import { login } from '@/app/(auth)/actions';
 import { useState, useTransition } from 'react';
 import { Loader2 } from 'lucide-react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const urlError = searchParams.get('message');
   const [formError, setFormError] = useState<string | null>(urlError);
 
@@ -40,10 +39,10 @@ export function LoginForm() {
     setFormError(null);
     startTransition(async () => {
       const result = await login(values);
+      // The server action now handles the redirect on success.
+      // We only need to handle the error case here.
       if (result?.error) {
         setFormError(result.error);
-      } else if (result?.success && result.redirect) {
-        router.replace(result.redirect);
       }
     });
   }

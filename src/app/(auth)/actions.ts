@@ -14,7 +14,9 @@ export async function login(values: z.infer<typeof loginSchema>) {
     return { error: error.message };
   }
 
-  return { success: true, redirect: '/dashboard' };
+  // On success, the server will handle the redirect.
+  // The client no longer needs to do anything.
+  redirect('/dashboard');
 }
 
 export async function signup(values: z.infer<typeof signupSchema>) {
