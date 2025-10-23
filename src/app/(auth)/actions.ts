@@ -112,6 +112,6 @@ export async function readUserSession() {
     .single();
 
 
-      console.log(profile ,  "profile")
+    
   return { user: data.session.user, profile };
 }
