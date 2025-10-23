@@ -1,9 +1,5 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
-<<<<<<< HEAD
-import { type NextRequest, NextResponse } from 'next/server'
-=======
 import { NextResponse, type NextRequest } from 'next/server'
->>>>>>> 2a2cb5be7b204e2fcf4530a65a8b7c337ab406e7
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
@@ -21,11 +17,7 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-<<<<<<< HEAD
-          // If the cookie is updated, update the cookies for the request and response
-=======
           // If the cookie is updated, update the request cookies and re-create the response.
->>>>>>> 2a2cb5be7b204e2fcf4530a65a8b7c337ab406e7
           request.cookies.set({
             name,
             value,
@@ -43,11 +35,7 @@ export async function updateSession(request: NextRequest) {
           })
         },
         remove(name: string, options: CookieOptions) {
-<<<<<<< HEAD
-          // If the cookie is removed, update the cookies for the request and response
-=======
           // If the cookie is removed, update the request cookies and re-create the response.
->>>>>>> 2a2cb5be7b204e2fcf4530a65a8b7c337ab406e7
           request.cookies.set({
             name,
             value: '',
@@ -68,12 +56,8 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-<<<<<<< HEAD
-  // This will refresh the session cookie if needed
-=======
   // This will refresh the session if expired - required for Server Components
   // https://supabase.com/docs/guides/auth/server-side/nextjs
->>>>>>> 2a2cb5be7b204e2fcf4530a65a8b7c337ab406e7
   await supabase.auth.getUser()
 
   return response

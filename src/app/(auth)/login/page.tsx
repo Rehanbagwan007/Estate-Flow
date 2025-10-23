@@ -15,10 +15,6 @@ export default async function LoginPage() {
     redirect('/dashboard');
   }
 
-<<<<<<< HEAD
-=======
-export default async function LoginPage() {
->>>>>>> 2a2cb5be7b204e2fcf4530a65a8b7c337ab406e7
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
