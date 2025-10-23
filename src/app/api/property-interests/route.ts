@@ -1,5 +1,6 @@
+
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
@@ -12,6 +13,12 @@ export async function POST(request: NextRequest) {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
+        set: (name, value, options) => {
+            cookieStore.set(name, value, options)
+        },
+        remove: (name, options) => {
+            cookieStore.delete(name, options)
+        }
       },
     }
   )
@@ -24,7 +31,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is a customer
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -36,13 +42,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { property_id, interest_level, preferred_meeting_time, phone } = body;
+    const { property_id, interest_level, preferred_meeting_time, phone, message } = body;
 
     if (!property_id || !interest_level) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
-
-    // Create property interest
+    
+    // Create property interest, excluding the 'message' field.
     const { data: interest, error } = await supabase
       .from('property_interests')
       .insert({
@@ -60,7 +66,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Failed to create interest: ${error.message}` }, { status: 500 });
     }
 
-    // Update customer phone if provided
     if (phone) {
       await supabase
         .from('profiles')
