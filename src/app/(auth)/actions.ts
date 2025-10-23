@@ -28,6 +28,7 @@ export async function signup(values: z.infer<typeof signupSchema>) {
       data: {
         first_name: values.firstName,
         last_name: values.lastName,
+        phone: values.phone,
         role: values.role,
       },
     },
