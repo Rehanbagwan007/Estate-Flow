@@ -10,12 +10,13 @@ export async function login(values: z.infer<typeof loginSchema>) {
   const { error } = await supabase.auth.signInWithPassword(values);
 
   if (error) {
-    // Return the error message to be displayed on the login form
     return { error: error.message };
   }
   
-  // Do not redirect here. The middleware will handle redirecting to the dashboard.
-  return { success: true };
+  // After a successful login, the user should be redirected.
+  // The middleware will handle unauthenticated access, but after login,
+  // we want to make sure the user lands on the dashboard.
+  return redirect('/dashboard');
 }
 
 export async function signup(values: z.infer<typeof signupSchema>) {
