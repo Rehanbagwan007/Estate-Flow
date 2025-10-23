@@ -17,12 +17,13 @@ import { Input } from '@/components/ui/input';
 import { login } from '@/app/(auth)/actions';
 import { useState, useTransition } from 'react';
 import { Loader2 } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const urlError = searchParams.get('message');
   const [formError, setFormError] = useState<string | null>(urlError);
 
@@ -41,10 +42,8 @@ export function LoginForm() {
       const result = await login(values);
       if (result?.error) {
         setFormError(result.error);
-      } else if (result?.success) {
-        // On success, do a full page reload to the dashboard.
-        // This prevents race conditions with the session cookie.
-        window.location.href = '/dashboard';
+      } else if (result?.success && result.redirect) {
+        router.replace(result.redirect);
       }
     });
   }

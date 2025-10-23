@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { loginSchema } from '@/schemas';
 import { signupSchema } from '@/schemas';
+import { redirect } from 'next/navigation';
 
 export async function login(values: z.infer<typeof loginSchema>) {
   const supabase = createClient();
@@ -13,7 +14,7 @@ export async function login(values: z.infer<typeof loginSchema>) {
     return { error: error.message };
   }
 
-  return { success: true };
+  return { success: true, redirect: '/dashboard' };
 }
 
 export async function signup(values: z.infer<typeof signupSchema>) {
