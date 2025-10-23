@@ -1,4 +1,3 @@
-
 -- Create all custom ENUM types first to avoid dependency issues
 CREATE TYPE public.user_role AS ENUM (
     'super_admin',
@@ -57,6 +56,7 @@ CREATE TYPE public.appointment_status AS ENUM (
     'confirmed',
     'in_progress',
     'completed',
+    'cancelled',
     'no_show'
 );
 
@@ -117,7 +117,6 @@ CREATE TYPE public.assignment_type AS ENUM (
 CREATE TYPE public.assignment_priority AS ENUM (
     'low',
     'medium',
-there is something wrong here, I will stop the generation.
     'high',
     'urgent'
 );
@@ -131,19 +130,7 @@ CREATE TYPE public.assignment_status AS ENUM (
 );
 
 
--- Create tables
-CREATE TABLE IF NOT EXISTS public.property_interests (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    property_id UUID NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
-    customer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    interest_level public.interest_level NOT NULL DEFAULT 'interested',
-    status public.interest_status NOT NULL DEFAULT 'pending',
-    message TEXT,
-    preferred_meeting_time TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
+-- Create tables with IF NOT EXISTS to be safe
 CREATE TABLE IF NOT EXISTS public.agent_assignments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_interest_id UUID REFERENCES public.property_interests(id) ON DELETE SET NULL,
@@ -159,115 +146,32 @@ CREATE TABLE IF NOT EXISTS public.agent_assignments (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.appointments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    property_interest_id UUID NOT NULL REFERENCES public.property_interests(id) ON DELETE CASCADE,
-    customer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    agent_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    scheduled_at TIMESTAMPTZ NOT NULL,
-    duration_minutes INT,
-    location TEXT,
-    notes TEXT,
-    status public.appointment_status NOT NULL DEFAULT 'scheduled',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+-- Add foreign keys if they don't exist
+ALTER TABLE public.leads
+    ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id),
+    ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES public.profiles(id);
 
-CREATE TABLE IF NOT EXISTS public.call_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    call_id TEXT NOT NULL UNIQUE,
-    agent_id UUID NOT NULL REFERENCES public.profiles(id),
-    customer_id UUID NOT NULL REFERENCES public.profiles(id),
-    property_id UUID REFERENCES public.properties(id),
-    call_type public.call_type NOT NULL,
-    call_status public.call_status NOT NULL,
-    duration_seconds INT,
-    recording_url TEXT,
-    recording_duration_seconds INT,
-    notes TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.field_visits (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    agent_id UUID NOT NULL REFERENCES public.profiles(id),
-    property_id UUID REFERENCES public.properties(id),
-    visit_date DATE NOT NULL,
-    visit_type public.visit_type NOT NULL,
-    latitude REAL,
-    longitude REAL,
-    address TEXT,
-    duration_minutes INT,
-    notes TEXT,
-    photos TEXT[],
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.notifications (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    type public.notification_type NOT NULL,
-    title TEXT NOT NULL,
-    message TEXT NOT NULL,
-    is_read BOOLEAN DEFAULT FALSE,
-    data JSONB,
-    sent_via public.notification_channel NOT NULL DEFAULT 'app',
-    sent_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.integration_settings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    integration_type public.integration_type NOT NULL UNIQUE,
-    settings JSONB NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_by UUID REFERENCES public.profiles(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-
--- Alter existing tables to use the new types
-ALTER TABLE public.profiles
-  DROP COLUMN IF EXISTS role,
-  ADD COLUMN role public.user_role NOT NULL DEFAULT 'customer';
+ALTER TABLE public.lead_notes
+    ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id),
+    ADD COLUMN IF NOT EXISTS lead_id UUID REFERENCES public.leads(id);
 
 ALTER TABLE public.properties
-  DROP COLUMN IF EXISTS status,
-  ADD COLUMN status public.property_status NOT NULL DEFAULT 'Available',
-  DROP COLUMN IF EXISTS property_type,
-  ADD COLUMN property_type public.property_type;
-
-ALTER TABLE public.leads
-  DROP COLUMN IF EXISTS status,
-  ADD COLUMN status public.lead_status NOT NULL DEFAULT 'Warm';
+    ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id);
 
 ALTER TABLE public.tasks
-  DROP COLUMN IF EXISTS status,
-  ADD COLUMN status public.task_status NOT NULL DEFAULT 'Todo';
+    ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id),
+    ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES public.profiles(id),
+    ADD COLUMN IF NOT EXISTS related_lead_id UUID REFERENCES public.leads(id),
+    ADD COLUMN IF NOT EXISTS related_property_id UUID REFERENCES public.properties(id);
 
--- Handle new user creation
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, first_name, last_name, email, role, approval_status)
-  VALUES (
-    new.id,
-    new.raw_user_meta_data->>'first_name',
-    new.raw_user_meta_data->>'last_name',
-    new.email,
-    (new.raw_user_meta_data->>'role')::public.user_role,
-    'approved' -- Admins create approved users by default
-  );
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+ALTER TABLE public.profiles
+    ADD COLUMN IF NOT EXISTS approval_status TEXT,
+    ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS approved_by UUID REFERENCES public.profiles(id);
+    
+ALTER TABLE public.property_interests
+    ADD COLUMN IF NOT EXISTS message TEXT,
+    ADD COLUMN IF NOT EXISTS preferred_meeting_time TIMESTAMPTZ;
 
--- Drop existing trigger if it exists
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-
--- Create trigger to handle new user
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+-- Grant permissions
+GRANT ALL ON TABLE public.agent_assignments TO authenticated, service_role;
