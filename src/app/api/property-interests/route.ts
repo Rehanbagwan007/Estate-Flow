@@ -12,15 +12,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is approved customer
+    // Check if user is a customer
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, approval_status')
+      .select('role')
       .eq('id', user.id)
       .single();
 
-    if (!profile || profile.role !== 'customer' || profile.approval_status !== 'approved') {
-      return NextResponse.json({ error: 'Customer not approved' }, { status: 403 });
+    if (!profile || profile.role !== 'customer') {
+      return NextResponse.json({ error: 'Only customers can express interest.' }, { status: 403 });
     }
 
     const body = await request.json();
