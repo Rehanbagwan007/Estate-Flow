@@ -1,46 +1,65 @@
--- Create all custom ENUM types first to avoid dependency issues
+
+-- Drop existing objects to start fresh and avoid conflicts
+-- This makes the script idempotent
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'property_type') THEN
-        CREATE TYPE public.property_type AS ENUM ('Residential', 'Commercial', 'Land');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'task_status') THEN
-        CREATE TYPE public.task_status AS ENUM ('Todo', 'InProgress', 'Done');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'assignment_type') THEN
-        CREATE TYPE public.assignment_type AS ENUM ('property_interest', 'follow_up', 'cold_call', 'meeting');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'assignment_status') THEN
-        CREATE TYPE public.assignment_status AS ENUM ('assigned', 'accepted', 'in_progress', 'completed', 'cancelled');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'assignment_priority') THEN
-        CREATE TYPE public.assignment_priority AS ENUM ('low', 'medium', 'high', 'urgent');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'appointment_status') THEN
-        CREATE TYPE public.appointment_status AS ENUM ('scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'call_type') THEN
-        CREATE TYPE public.call_type AS ENUM ('inbound', 'outbound');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'call_status') THEN
-        CREATE TYPE public.call_status AS ENUM ('initiated', 'ringing', 'answered', 'completed', 'failed', 'busy', 'no_answer');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'visit_type') THEN
-        CREATE TYPE public.visit_type AS ENUM ('property_visit', 'customer_meeting', 'site_inspection', 'follow_up');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'notification_type') THEN
-        CREATE TYPE public.notification_type AS ENUM ('property_interest', 'appointment_reminder', 'call_reminder', 'approval_status', 'task_assigned', 'meeting_scheduled');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'notification_channel') THEN
-        CREATE TYPE public.notification_channel AS ENUM ('app', 'email', 'whatsapp', 'sms');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'integration_type') THEN
-        CREATE TYPE public.integration_type AS ENUM ('exotel', 'whatsapp', 'olx', '99acres', 'facebook', 'instagram');
-    END IF;
+    DROP TABLE IF EXISTS public.agent_assignments CASCADE;
+    DROP TABLE IF EXISTS public.tasks CASCADE;
+    DROP TABLE IF EXISTS public.property_shares CASCADE;
+    DROP TABLE IF EXISTS public.appointments CASCADE;
+    DROP TABLE IF EXISTS public.call_logs CASCADE;
+    DROP TABLE IF EXISTS public.field_visits CASCADE;
+    DROP TABLE IF EXISTS public.notifications CASCADE;
+    DROP TABLE IF EXISTS public.integration_settings CASCADE;
+    DROP TABLE IF EXISTS public.property_interests CASCADE;
+
+    DROP TYPE IF EXISTS public.property_type;
+    DROP TYPE IF EXISTS public.task_status;
+    DROP TYPE IF EXISTS public.assignment_type;
+    DROP TYPE IF EXISTS public.assignment_status;
+    DROP TYPE IF EXISTS public.assignment_priority;
+    DROP TYPE IF EXISTS public.appointment_status;
+    DROP TYPE IF EXISTS public.call_type;
+    DROP TYPE IF EXISTS public.call_status;
+    DROP TYPE IF EXISTS public.visit_type;
+    DROP TYPE IF EXISTS public.notification_type;
+    DROP TYPE IF EXISTS public.notification_channel;
+    DROP TYPE IF EXISTS public.integration_type;
+    DROP TYPE IF EXISTS public.interest_level;
+    DROP TYPE IF EXISTS public.interest_status;
 END$$;
 
 
--- Create tables with IF NOT EXISTS
+-- Create all custom ENUM types correctly
+CREATE TYPE public.property_type AS ENUM ('Residential', 'Commercial', 'Land');
+CREATE TYPE public.task_status AS ENUM ('Todo', 'InProgress', 'Done');
+CREATE TYPE public.assignment_type AS ENUM ('property_interest', 'follow_up', 'cold_call', 'meeting');
+CREATE TYPE public.assignment_status AS ENUM ('assigned', 'accepted', 'in_progress', 'completed', 'cancelled');
+CREATE TYPE public.assignment_priority AS ENUM ('low', 'medium', 'high', 'urgent');
+CREATE TYPE public.interest_level AS ENUM ('interested', 'very_interested', 'ready_to_buy');
+CREATE TYPE public.interest_status AS ENUM ('pending', 'assigned', 'contacted', 'meeting_scheduled', 'completed', 'cancelled');
+CREATE TYPE public.appointment_status AS ENUM ('scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show');
+CREATE TYPE public.call_type AS ENUM ('inbound', 'outbound');
+CREATE TYPE public.call_status AS ENUM ('initiated', 'ringing', 'answered', 'completed', 'failed', 'busy', 'no_answer');
+CREATE TYPE public.visit_type AS ENUM ('property_visit', 'customer_meeting', 'site_inspection', 'follow_up');
+CREATE TYPE public.notification_type AS ENUM ('property_interest', 'appointment_reminder', 'call_reminder', 'approval_status', 'task_assigned', 'meeting_scheduled');
+CREATE TYPE public.notification_channel AS ENUM ('app', 'email', 'whatsapp', 'sms');
+CREATE TYPE public.integration_type AS ENUM ('exotel', 'whatsapp', 'olx', '99acres', 'facebook', 'instagram');
+
+-- Create property_interests table with UUID primary key
+CREATE TABLE IF NOT EXISTS public.property_interests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id UUID NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
+    customer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    interest_level public.interest_level NOT NULL DEFAULT 'interested',
+    status public.interest_status NOT NULL DEFAULT 'pending',
+    message TEXT,
+    preferred_meeting_time TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Create agent_assignments table with correct foreign key type
 CREATE TABLE IF NOT EXISTS public.agent_assignments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_interest_id UUID REFERENCES public.property_interests(id) ON DELETE SET NULL,
@@ -56,6 +75,7 @@ CREATE TABLE IF NOT EXISTS public.agent_assignments (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Create all other necessary tables
 CREATE TABLE IF NOT EXISTS public.tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
@@ -146,8 +166,11 @@ CREATE TABLE IF NOT EXISTS public.integration_settings (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- This function handles new user signups. It creates a profile for the user.
-CREATE OR REPLACE FUNCTION public.handle_new_user()
+-- Re-create the function and trigger to be safe
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
+
+CREATE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO public.profiles (id, first_name, last_name, email, phone, role, approval_status)
@@ -164,9 +187,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- This trigger calls the function above when a new user is added to auth.users.
--- We will drop the trigger if it exists and recreate it to ensure it's up to date.
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
