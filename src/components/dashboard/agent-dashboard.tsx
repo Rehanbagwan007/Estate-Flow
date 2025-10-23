@@ -27,7 +27,7 @@ interface EnrichedAssignment extends AgentAssignment {
 }
 
 interface EnrichedTask extends Task {
-    property?: Property | null;
+    property?: (Property & { property_media?: { file_path: string }[] }) | null;
     customer?: Profile | null;
 }
 
@@ -73,7 +73,7 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
         supabase.from('tasks')
           .select(`
             *,
-            property:related_property_id(*),
+            property:related_property_id(*, property_media(*)),
             customer:created_by(*)
           `)
           .eq('assigned_to', userId)

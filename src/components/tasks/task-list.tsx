@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Task, Property, Profile } from '@/lib/types';
@@ -11,7 +12,7 @@ import { useState } from 'react';
 import { TaskDetailsDialog } from './task-details-dialog';
 
 interface EnrichedTask extends Task {
-    property?: Property & { property_media?: { file_path: string }[] } | null;
+    property?: (Property & { property_media?: { file_path: string }[] }) | null;
     customer?: Profile | null;
 }
 
