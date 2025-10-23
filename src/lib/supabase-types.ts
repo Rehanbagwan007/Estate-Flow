@@ -318,23 +318,23 @@ export type Database = {
       lead_notes: {
         Row: {
           created_at: string
-          created_by: string | null
+          created_by: string
           id: string
-          lead_id: string | null
+          lead_id: string
           note: string
         }
         Insert: {
           created_at?: string
-          created_by?: string | null
+          created_by: string
           id?: string
-          lead_id?: string | null
+          lead_id: string
           note: string
         }
         Update: {
           created_at?: string
-          created_by?: string | null
+          created_by?: string
           id?: string
-          lead_id?: string | null
+          lead_id?: string
           note?: string
         }
         Relationships: [
@@ -342,7 +342,7 @@ export type Database = {
             foreignKeyName: "lead_notes_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -403,7 +403,7 @@ export type Database = {
             foreignKeyName: "leads_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -761,7 +761,7 @@ export type Database = {
             foreignKeyName: "tasks_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {

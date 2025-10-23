@@ -47,7 +47,7 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('approval_status', 'pending'),
         supabase.from('properties').select('*'),
-        supabase.from('property_interests').select('id, status, interest_level, preferred_meeting_time, properties:property_id(*), profiles:customer_id(*)'),
+        supabase.from('property_interests').select('*, properties:property_id(*), profiles:customer_id(*)'),
         supabase.from('appointments').select('*, profiles!appointments_agent_id_fkey(*), profiles!appointments_customer_id_fkey(*)'),
       ]);
 

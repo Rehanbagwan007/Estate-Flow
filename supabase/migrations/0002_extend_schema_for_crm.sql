@@ -1,13 +1,12 @@
-
--- This script is designed to be idempotent and can be run multiple times safely.
 DO $$
 BEGIN
     -- Drop all related objects in reverse order of creation to ensure a clean slate
-    -- This is necessary to resolve previous migration errors and start fresh.
+    -- Drop triggers first
     DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+    -- Drop functions
     DROP FUNCTION IF EXISTS public.handle_new_user();
 
-    -- Drop tables, cascading to dependent objects like foreign keys.
+    -- Drop tables, cascading to drop dependent objects like views or foreign keys
     DROP TABLE IF EXISTS public.integration_settings CASCADE;
     DROP TABLE IF EXISTS public.notifications CASCADE;
     DROP TABLE IF EXISTS public.field_visits CASCADE;
@@ -19,12 +18,13 @@ BEGIN
     DROP TABLE IF EXISTS public.property_interests CASCADE;
     DROP TABLE IF EXISTS public.lead_notes CASCADE;
 
-    -- Drop all ENUM types to prevent "already exists" errors during re-creation.
-    DROP TYPE IF EXISTS public.property_type;
-    DROP TYPE IF EXISTS public.task_status;
+    -- Drop all ENUM types to prevent "already exists" errors during recreation
     DROP TYPE IF EXISTS public.assignment_type;
     DROP TYPE IF EXISTS public.assignment_status;
     DROP TYPE IF EXISTS public.assignment_priority;
+    DROP TYPE IF EXISTS public.task_status;
+    DROP TYPE IF EXISTS public.interest_level;
+    DROP TYPE IF EXISTS public.interest_status;
     DROP TYPE IF EXISTS public.appointment_status;
     DROP TYPE IF EXISTS public.call_type;
     DROP TYPE IF EXISTS public.call_status;
@@ -32,14 +32,10 @@ BEGIN
     DROP TYPE IF EXISTS public.notification_type;
     DROP TYPE IF EXISTS public.notification_channel;
     DROP TYPE IF EXISTS public.integration_type;
-    DROP TYPE IF EXISTS public.interest_level;
-    DROP TYPE IF EXISTS public.interest_status;
-
 END$$;
 
--- == Create all custom ENUM types correctly ==
--- These types define the allowed values for various columns in the database.
 
+-- == Create all custom ENUM types correctly ==
 CREATE TYPE public.interest_level AS ENUM ('interested', 'very_interested', 'ready_to_buy');
 CREATE TYPE public.interest_status AS ENUM ('pending', 'assigned', 'contacted', 'meeting_scheduled', 'completed', 'cancelled');
 CREATE TYPE public.assignment_type AS ENUM ('property_interest', 'follow_up', 'cold_call', 'meeting');
@@ -56,7 +52,7 @@ CREATE TYPE public.integration_type AS ENUM ('exotel', 'whatsapp', 'olx', '99acr
 
 -- == Create tables with correct foreign key references ==
 
--- property_interests: Tracks customer interest in a specific property.
+-- property_interests
 CREATE TABLE public.property_interests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_id UUID NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
@@ -69,7 +65,7 @@ CREATE TABLE public.property_interests (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- agent_assignments: Links a customer/interest to a specific team member.
+-- agent_assignments
 CREATE TABLE public.agent_assignments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_interest_id UUID REFERENCES public.property_interests(id) ON DELETE SET NULL,
@@ -85,7 +81,7 @@ CREATE TABLE public.agent_assignments (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- tasks: Individual tasks assigned to team members.
+-- tasks (Corrected: references public.profiles instead of public.users)
 CREATE TABLE public.tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
@@ -93,23 +89,22 @@ CREATE TABLE public.tasks (
     status public.task_status NOT NULL DEFAULT 'Todo',
     due_date TIMESTAMPTZ,
     assigned_to UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL, -- Correctly references public.profiles
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     related_lead_id UUID REFERENCES public.leads(id) ON DELETE SET NULL,
     related_property_id UUID REFERENCES public.properties(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- lead_notes: Notes related to a specific lead.
+-- lead_notes (Corrected: references public.profiles instead of public.users)
 CREATE TABLE public.lead_notes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     lead_id UUID REFERENCES public.leads(id) ON DELETE CASCADE,
-    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL, -- Correctly references public.profiles
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     note TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Other tables required for full application functionality
-
+-- Other tables for full functionality
 CREATE TABLE public.property_shares (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_id UUID NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
@@ -186,27 +181,3 @@ CREATE TABLE public.integration_settings (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
--- == Function and Trigger for new user signup ==
--- This function automatically creates a 'profile' for every new user signing up via Supabase Auth.
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO public.profiles (id, first_name, last_name, email, phone, role, approval_status)
-    VALUES (
-        new.id,
-        new.raw_user_meta_data->>'first_name',
-        new.raw_user_meta_data->>'last_name',
-        new.email,
-        new.raw_user_meta_data->>'phone',
-        (new.raw_user_meta_data->>'role')::public.user_role,
-        'approved' -- Users created by admin are auto-approved.
-    );
-    RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Recreate the trigger to call the function on new user creation.
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
