@@ -14,7 +14,8 @@ export async function login(values: z.infer<typeof loginSchema>) {
     return { error: error.message };
   }
 
-  // A redirect is no longer needed here, the page will refresh and middleware/layout will handle it.
+  // A redirect is no longer needed here. The client will handle navigation.
+  return { success: true };
 }
 
 export async function signup(values: z.infer<typeof signupSchema>) {

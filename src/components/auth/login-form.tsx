@@ -42,9 +42,9 @@ export function LoginForm() {
       const result = await login(values);
       if (result?.error) {
         setFormError(result.error);
-      } else {
-        // On success, refresh the page. The middleware will handle the redirect.
-        router.refresh();
+      } else if (result?.success) {
+        // On success, navigate to the dashboard.
+        router.push('/dashboard');
       }
     });
   }
