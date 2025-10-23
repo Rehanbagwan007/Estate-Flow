@@ -1,31 +1,39 @@
+// src/app/(dashboard)/dashboard/page.tsx
+import { readUserSession } from '@/app/(auth)/actions';
 import { RoleDashboard } from '@/components/dashboard/role-dashboard';
 import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers'; // Import cookies
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+
 
 export default async function DashboardPage() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const cookieStore = cookies(); // Create the cookie store
+  const supabase = createClient(cookieStore); // Pass it to the client
+  //const [profile,setProfile] = useState(null)
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+
+
   if (!user) {
     redirect('/login');
   }
-
-  const { data: profile } = await supabase
+ 
+    const { data: profile } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single();
+ 
+    console.log(profile)
+   
+    
 
   if (!profile) {
-    // This can happen in a race condition right after signup, but since admin creates users,
-    // it's more likely an error. Safest place to go is login.
-    redirect('/login?message=Profile not found.');
+    return redirect('/login?message=Profile not found.');
   }
 
-  // Render the role-specific dashboard.
-  return <RoleDashboard userRole={profile.role} userId={user.id} />;
+  return <RoleDashboard userRole={profile?.role} userId={user?.id} />;
 }
