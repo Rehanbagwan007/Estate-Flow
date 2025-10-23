@@ -26,7 +26,7 @@ interface AssignAgentDialogProps {
   onSuccess: (interestId: string, assignedTask: Task) => void;
 }
 
-const ASSIGNABLE_ROLES = ['admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2'];
+const ASSIGNABLE_ROLES = ['admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2', 'super_admin'];
 
 export function AssignAgentDialog({ interest, isOpen, onClose, onSuccess }: AssignAgentDialogProps) {
   const [teamMembers, setTeamMembers] = useState<Profile[]>([]);

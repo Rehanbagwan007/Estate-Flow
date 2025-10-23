@@ -70,7 +70,7 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
         console.error("Failed to create assignment:", assignmentError);
         // Optionally revert the status update
         await supabase.from('property_interests').update({ status: 'pending' }).eq('id', propertyInterestId);
-        return { success: false, message: 'Failed to create agent assignment.' };
+        return { success: false, message: `Failed to create agent assignment: ${assignmentError.message}` };
     }
     
     console.log('Successfully created agent assignment:', assignment.id);

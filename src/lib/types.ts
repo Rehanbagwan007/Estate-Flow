@@ -64,3 +64,4 @@ export type AssignmentType = Enums<'assignment_type'>;
 export type AssignmentPriority = Enums<'assignment_priority'>;
 export type AssignmentStatus = Enums<'assignment_status'>;
 export type PropertyType = Enums<'property_type'>;
+export type TaskStatus = Enums<'task_status'>;
