@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
     
-    // Create property interest, excluding the 'message' field.
+    // Create property interest
     const { data: interest, error } = await supabase
       .from('property_interests')
       .insert({
@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
         customer_id: user.id,
         interest_level,
         preferred_meeting_time,
+        message, // Now saving the message
         status: 'pending'
       })
       .select()
