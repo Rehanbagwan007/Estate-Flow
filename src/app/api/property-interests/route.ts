@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+      },
+    }
+  )
   try {
-    const supabase = createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -24,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { property_id, interest_level, message, preferred_meeting_time, phone } = body;
+    const { property_id, interest_level, preferred_meeting_time, phone } = body;
 
     if (!property_id || !interest_level) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -37,7 +49,6 @@ export async function POST(request: NextRequest) {
         property_id,
         customer_id: user.id,
         interest_level,
-        message,
         preferred_meeting_time,
         status: 'pending'
       })
@@ -66,8 +77,19 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+      },
+    }
+  )
   try {
-    const supabase = createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
