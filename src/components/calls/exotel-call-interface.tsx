@@ -19,6 +19,8 @@ import {
   User,
   Calendar
 } from 'lucide-react';
+import type { CallLog } from '@/lib/types';
+
 
 interface ExotelCallInterfaceProps {
   agentId: string;
@@ -26,19 +28,6 @@ interface ExotelCallInterfaceProps {
   customerPhone?: string;
   onCallStart?: (callId: string) => void;
   onCallEnd?: (callId: string, duration: number) => void;
-}
-
-interface CallLog {
-  id: string;
-  call_id: string;
-  agent_id: string;
-  customer_id: string;
-  call_type: 'inbound' | 'outbound';
-  call_status: 'initiated' | 'ringing' | 'answered' | 'completed' | 'failed' | 'busy' | 'no_answer';
-  duration_seconds: number | null;
-  recording_url: string | null;
-  notes: string | null;
-  created_at: string;
 }
 
 export function ExotelCallInterface({ 
@@ -70,7 +59,8 @@ export function ExotelCallInterface({
   }, [callStatus]);
 
   // Format duration in MM:SS
-  const formatDuration = (seconds: number) => {
+  const formatDuration = (seconds: number | null) => {
+    if (seconds === null) return '00:00';
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;

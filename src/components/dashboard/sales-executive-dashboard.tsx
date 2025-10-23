@@ -9,8 +9,8 @@ import {
   Target,
   TrendingUp,
   CheckCircle,
-  Clock
 } from 'lucide-react';
+import { ExotelCallInterface } from '../calls/exotel-call-interface';
 
 interface SalesExecutiveDashboardProps {
   userId: string;
@@ -113,6 +113,9 @@ export async function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboar
         </Card>
       </div>
 
+      {/* Exotel Call Interface */}
+      <ExotelCallInterface agentId={userId} />
+
       {/* My Assignments */}
       <Card>
         <CardHeader>
@@ -166,168 +169,6 @@ export async function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboar
           )}
         </CardContent>
       </Card>
-
-      {/* My Leads */}
-      <Card>
-        <CardHeader>
-          <CardTitle>My Leads</CardTitle>
-          <CardDescription>
-            Leads assigned to you for follow-up
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {myLeads.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No leads assigned yet
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {myLeads.slice(0, 5).map((lead) => (
-                <div key={lead.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-medium">
-                        {lead.first_name[0]}{lead.last_name?.[0]}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-medium">{lead.first_name} {lead.last_name}</p>
-                      <p className="text-sm text-muted-foreground">{lead.email}</p>
-                      <p className="text-sm text-muted-foreground">{lead.phone}</p>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Badge variant="outline" className={
-                      lead.status === 'Hot' ? 'bg-red-100 text-red-800' :
-                      lead.status === 'Warm' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-blue-100 text-blue-800'
-                    }>
-                      {lead.status}
-                    </Badge>
-                    <Button size="sm" variant="outline">
-                      <Phone className="h-4 w-4 mr-1" />
-                      Call
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Upcoming Appointments */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Upcoming Appointments</CardTitle>
-          <CardDescription>
-            Scheduled meetings with customers
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {myAppointments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No appointments scheduled
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {myAppointments
-                .filter(a => new Date(a.scheduled_at) > new Date())
-                .slice(0, 5)
-                .map((appointment) => (
-                <div key={appointment.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <Calendar className="h-8 w-8 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">
-                        Meeting with {appointment.customer?.first_name} {appointment.customer?.last_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(appointment.scheduled_at).toLocaleString()}
-                      </p>
-                      {appointment.location && (
-                        <p className="text-sm text-muted-foreground">
-                          Location: {appointment.location}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Badge variant="outline">{appointment.status}</Badge>
-                    <Button size="sm" variant="outline">
-                      <Phone className="h-4 w-4 mr-1" />
-                      Call
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Performance Summary */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Summary</CardTitle>
-            <CardDescription>
-              Your sales performance metrics
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Assignment Completion</span>
-                <span className="text-lg font-bold text-green-600">
-                  {totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Call Success Rate</span>
-                <span className="text-lg font-bold">
-                  {totalCalls > 0 ? Math.round((completedCalls / totalCalls) * 100) : 0}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Hot Leads Ratio</span>
-                <span className="text-lg font-bold">
-                  {totalLeads > 0 ? Math.round((hotLeads / totalLeads) * 100) : 0}%
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>
-              Common sales executive tasks
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
-                <Phone className="h-4 w-4 mr-2" />
-                Make Customer Call
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Calendar className="h-4 w-4 mr-2" />
-                Schedule Meeting
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Update Lead Status
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                View Performance
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

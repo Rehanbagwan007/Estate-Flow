@@ -58,6 +58,14 @@ export class WhatsAppService {
       return false;
     }
   }
+  
+  async sendSimpleMessage(phoneNumber: string, message: string): Promise<boolean> {
+    return this.sendMessage({
+      to: phoneNumber,
+      type: 'text',
+      content: message,
+    });
+  }
 
   async sendPropertyInterestNotification(
     phoneNumber: string,

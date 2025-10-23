@@ -7,11 +7,11 @@ import {
   Phone, 
   Calendar, 
   Building2,
-  Clock,
   CheckCircle,
   TrendingUp,
   MapPin
 } from 'lucide-react';
+import { ExotelCallInterface } from '../calls/exotel-call-interface';
 
 interface AgentDashboardProps {
   userId: string;
@@ -114,6 +114,9 @@ export async function AgentDashboard({ userId }: AgentDashboardProps) {
         </Card>
       </div>
 
+      {/* Exotel Call Interface */}
+      <ExotelCallInterface agentId={userId} />
+
       {/* My Assignments */}
       <Card>
         <CardHeader>
@@ -167,189 +170,6 @@ export async function AgentDashboard({ userId }: AgentDashboardProps) {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Upcoming Appointments */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Upcoming Appointments</CardTitle>
-          <CardDescription>
-            Scheduled meetings with customers
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {myAppointments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No appointments scheduled
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {myAppointments
-                .filter(a => new Date(a.scheduled_at) > new Date())
-                .slice(0, 5)
-                .map((appointment) => (
-                <div key={appointment.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <Calendar className="h-8 w-8 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">
-                        Meeting with {appointment.customer?.first_name} {appointment.customer?.last_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(appointment.scheduled_at).toLocaleString()}
-                      </p>
-                      {appointment.location && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4" />
-                          <span>{appointment.location}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Badge variant="outline">{appointment.status}</Badge>
-                    <Button size="sm" variant="outline">
-                      <Phone className="h-4 w-4 mr-1" />
-                      Call
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent Call Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Call Activity</CardTitle>
-          <CardDescription>
-            Your recent customer calls
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {myCallLogs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No calls made yet
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {myCallLogs.slice(0, 5).map((call) => (
-                <div key={call.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <Phone className="h-8 w-8 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">
-                        Call with {call.customer?.first_name} {call.customer?.last_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(call.created_at).toLocaleString()}
-                      </p>
-                      {call.duration_seconds && (
-                        <p className="text-sm text-muted-foreground">
-                          Duration: {Math.floor(call.duration_seconds / 60)}m {call.duration_seconds % 60}s
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Badge variant="outline" className={
-                      call.call_status === 'completed' ? 'bg-green-100 text-green-800' :
-                      call.call_status === 'failed' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }>
-                      {call.call_status}
-                    </Badge>
-                    {call.recording_url && (
-                      <Button size="sm" variant="outline">
-                        Play Recording
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* My Properties */}
-      <Card>
-        <CardHeader>
-          <CardTitle>My Property Listings</CardTitle>
-          <CardDescription>
-            Properties you've listed
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {myProperties.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No properties listed yet
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {myProperties.slice(0, 5).map((property) => (
-                <div key={property.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <Building2 className="h-8 w-8 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{property.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {property.city}, {property.state}
-                      </p>
-                      <p className="text-sm font-medium">₹{property.price.toLocaleString()}</p>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Badge variant="outline">{property.status}</Badge>
-                    <Button size="sm" variant="outline">
-                      Edit
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
-            Common agent tasks
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-            <Button variant="outline" className="h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">Add Property</div>
-                <div className="text-sm text-muted-foreground">Create new listing</div>
-              </div>
-            </Button>
-            <Button variant="outline" className="h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">Call Customer</div>
-                <div className="text-sm text-muted-foreground">Make outbound call</div>
-              </div>
-            </Button>
-            <Button variant="outline" className="h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">Schedule Meeting</div>
-                <div className="text-sm text-muted-foreground">Book appointment</div>
-              </div>
-            </Button>
-            <Button variant="outline" className="h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">View Reports</div>
-                <div className="text-sm text-muted-foreground">My performance</div>
-              </div>
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
