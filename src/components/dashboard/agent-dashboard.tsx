@@ -74,14 +74,7 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
           .select(`
             *,
             property:related_property_id(*),
-            lead:related_lead_id(
-                *,
-                profile:profiles(*)
-            ),
-            assignment:agent_assignments(
-                *,
-                customer:profiles(*)
-            )
+            customer:created_by(*)
           `)
           .eq('assigned_to', userId)
           .order('created_at', { ascending: false }),
@@ -92,11 +85,10 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
       setCallLogs(callLogsResult.data || []);
       
       const enrichedTasks = (tasksResult.data || []).map((task: any) => {
-        const customer = task.assignment?.customer || task.lead?.profile;
         return {
             ...task,
             property: task.property,
-            customer,
+            customer: task.customer,
         };
       }) as EnrichedTask[];
       

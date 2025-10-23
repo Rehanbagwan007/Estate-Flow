@@ -59,10 +59,7 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
                     .select(`
                         *,
                         property:related_property_id(*),
-                        assignment:agent_assignments(
-                            *,
-                            customer:profiles(*)
-                        )
+                        customer:created_by(*)
                     `)
                     .eq('assigned_to', userId)
                     .order('created_at', { ascending: false }),
@@ -76,7 +73,7 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
             const enrichedTasks = (tasksResult.data || []).map((task: any) => ({
                 ...task,
                 property: task.property,
-                customer: task.assignment?.customer,
+                customer: task.customer,
             })) as EnrichedTask[];
             setTasks(enrichedTasks);
 

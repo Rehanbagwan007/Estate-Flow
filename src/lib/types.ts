@@ -35,7 +35,7 @@ export type Database = MergeDeep<
 >;
 
 export type Profile = Tables<'profiles'>;
-export type Property = Tables<'properties'>;
+export type Property = Tables<'properties'> & { property_media?: { file_path: string }[] };
 export type Lead = Tables<'leads'>;
 export type Task = Tables<'tasks'>;
 export type LeadNote = Tables<'lead_notes'>;
