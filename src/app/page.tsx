@@ -1,8 +1,13 @@
 import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 
-export default function RootPage() {
-  // The middleware ensures the user is logged in.
-  // We redirect to the main dashboard route, which is inside the (dashboard)
-  // layout group, ensuring the sidebar and header are always present.
-  redirect('/dashboard');
+export default async function RootPage() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect('/dashboard');
+  } else {
+    redirect('/login');
+  }
 }

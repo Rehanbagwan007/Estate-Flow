@@ -2,6 +2,12 @@ import { type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
+  // The `/` route is guarded by the dashboard layout, so we redirect to `/dashboard`
+  // to ensure the user is authenticated.
+  if (request.nextUrl.pathname === '/') {
+    return Response.redirect(new URL('/dashboard', request.url))
+  }
+  
   return await updateSession(request);
 }
 
