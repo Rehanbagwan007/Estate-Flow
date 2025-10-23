@@ -17,7 +17,6 @@ export async function login(values: z.infer<typeof loginSchema>) {
     return { error: 'Login successful, but no user object was returned.' };
   }
 
-  // --- Definitive Fix: Check for and create profile if it doesn't exist ---
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('id')
@@ -25,13 +24,10 @@ export async function login(values: z.infer<typeof loginSchema>) {
     .single();
 
   if (profileError && profileError.code !== 'PGRST116') {
-    // PGRST116 is "exact-single-row-not-found", which is what we expect if the profile is missing.
-    // Any other error should be reported.
     return { error: `Database error checking for profile: ${profileError.message}` };
   }
 
   if (!profile) {
-    // The profile doesn't exist. Create it now.
     const { error: createProfileError } = await supabase
       .from('profiles')
       .insert({
@@ -44,13 +40,13 @@ export async function login(values: z.infer<typeof loginSchema>) {
       });
       
     if (createProfileError) {
-      // If we can't create the profile, we can't proceed.
       return { error: `Failed to create user profile: ${createProfileError.message}` };
     }
   }
-  // --- End of Fix ---
 
-  redirect('/dashboard');
+  // The redirect will be handled by the middleware after the client reloads.
+  // We just need to signal success to the client form.
+  return { success: true };
 }
 
 export async function signup(values: z.infer<typeof signupSchema>) {
@@ -71,7 +67,5 @@ export async function signup(values: z.infer<typeof signupSchema>) {
     return { error: error.message };
   }
 
-  // The handle_new_user trigger in schema.sql should create the profile,
-  // but the login logic now provides a robust fallback.
   return { data };
 }

@@ -13,6 +13,8 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser()
 
+  // The middleware now handles the primary redirect.
+  // This is a secondary check in case the middleware fails or is bypassed.
   if (!user) {
     redirect('/login');
   }
@@ -25,8 +27,8 @@ export default async function DashboardLayout({
   
   if (!profile) {
     // If the profile doesn't exist, something is wrong.
-    // The dashboard page will handle the ultimate redirect to login.
-    // Returning children prevents a render error for a moment.
+    // The login action should have created it.
+    // Redirecting to login with an error is the safest action.
      return redirect('/login?message=Profile not found. Please log in again.');
   }
 

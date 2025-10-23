@@ -42,7 +42,8 @@ export function LoginForm() {
       if (result?.error) {
         setError(result.error);
       } else if (result?.success) {
-        router.push('/dashboard');
+        // A simple refresh will trigger the middleware to handle the redirect.
+        router.refresh();
       }
     });
   }
