@@ -720,6 +720,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          related_customer_id: string | null
           related_lead_id: string | null
           related_property_id: string | null
           status: Database["public"]["Enums"]["task_status"]
@@ -732,6 +733,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          related_customer_id?: string | null
           related_lead_id?: string | null
           related_property_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
@@ -744,6 +746,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          related_customer_id?: string | null
           related_lead_id?: string | null
           related_property_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
@@ -760,6 +763,13 @@ export type Database = {
           {
             foreignKeyName: "tasks_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_related_customer_id_fkey"
+            columns: ["related_customer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

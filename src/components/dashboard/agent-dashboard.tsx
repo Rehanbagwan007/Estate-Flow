@@ -74,7 +74,7 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
           .select(`
             *,
             property:related_property_id(*, property_media(*)),
-            customer:created_by(*)
+            customer:related_customer_id(*)
           `)
           .eq('assigned_to', userId)
           .order('created_at', { ascending: false }),

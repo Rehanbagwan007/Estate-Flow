@@ -84,7 +84,7 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
             created_by: user.id,
             status: 'Todo',
             due_date: taskDueDate,
-            related_lead_id: null,
+            related_customer_id: interestUpdate.customer_id, // Correctly linking the customer
             related_property_id: interestUpdate.property_id,
         })
         .select()
