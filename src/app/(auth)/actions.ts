@@ -12,10 +12,11 @@ export async function login(values: z.infer<typeof loginSchema>) {
   const { error } = await supabase.auth.signInWithPassword(values);
 
   if (error) {
-    return redirect(`/login?message=${error.message}`);
+    return { error: error.message };
   }
   
-  return redirect('/');
+  // No redirect here. We will handle it on the client.
+  return { success: true };
 }
 
 export async function signup(values: z.infer<typeof signupSchema>) {

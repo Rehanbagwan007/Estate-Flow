@@ -15,15 +15,17 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { login } from '@/app/(auth)/actions';
-import { useTransition } from 'react';
+import { useTransition, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const errorMessage = searchParams.get('message');
+  const urlError = searchParams.get('message');
+  const [error, setError] = useState<string | null>(urlError);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -34,18 +36,24 @@ export function LoginForm() {
   });
 
   function onSubmit(values: z.infer<typeof loginSchema>) {
+    setError(null);
     startTransition(async () => {
-      await login(values);
+      const result = await login(values);
+      if (result?.error) {
+        setError(result.error);
+      } else if (result?.success) {
+        router.push('/dashboard');
+      }
     });
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {errorMessage && (
+        {error && (
             <Alert variant="destructive">
                 <AlertTitle>Login Failed</AlertTitle>
-                <AlertDescription>{errorMessage}</AlertDescription>
+                <AlertDescription>{error}</AlertDescription>
             </Alert>
         )}
         <div className="space-y-4">
