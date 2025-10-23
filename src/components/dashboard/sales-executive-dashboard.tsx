@@ -1,4 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
+
+'use client';
+
+import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,47 +10,94 @@ import {
   Phone, 
   Calendar, 
   Target,
-  TrendingUp,
-  CheckCircle,
+  ListTodo
 } from 'lucide-react';
 import { ExotelCallInterface } from '../calls/exotel-call-interface';
+import type { AgentAssignment, Appointment, CallLog, Profile, Lead, Task } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { TaskList } from '../tasks/task-list';
+
+
+interface EnrichedAssignment extends AgentAssignment {
+    customer: Profile;
+}
 
 interface SalesExecutiveDashboardProps {
   userId: string;
 }
 
-export async function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps) {
-  const supabase = createClient();
+export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps) {
+    const [assignments, setAssignments] = useState<EnrichedAssignment[]>([]);
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [callLogs, setCallLogs] = useState<CallLog[]>([]);
+    const [leads, setLeads] = useState<Lead[]>([]);
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch sales executive data
-  const [
-    myAssignmentsResult,
-    myLeadsResult,
-    myCallsResult,
-    myAppointmentsResult
-  ] = await Promise.all([
-    supabase.from('agent_assignments').select('*, customer:profiles(*)').eq('agent_id', userId),
-    supabase.from('leads').select('*').eq('assigned_to', userId),
-    supabase.from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId),
-    supabase.from('appointments').select('*, customer:profiles(*)').eq('agent_id', userId)
-  ]);
+    const [callTarget, setCallTarget] = useState<{ customerId: string; customerPhone: string; customerName: string } | null>(null);
 
-  const myAssignments = myAssignmentsResult.data || [];
-  const myLeads = myLeadsResult.data || [];
-  const myCalls = myCallsResult.data || [];
-  const myAppointments = myAppointmentsResult.data || [];
+    useEffect(() => {
+        const supabase = createClient();
+        const fetchData = async () => {
+        setIsLoading(true);
+        const [
+            assignmentsResult,
+            appointmentsResult,
+            callLogsResult,
+            leadsResult,
+            tasksResult
+        ] = await Promise.all([
+            supabase.from('agent_assignments').select('*, customer:profiles(*)').eq('agent_id', userId),
+            supabase.from('appointments').select('*, customer:profiles(*)').eq('agent_id', userId),
+            supabase.from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId),
+            supabase.from('leads').select('*').eq('assigned_to', userId),
+            supabase.from('tasks').select('*').eq('assigned_to', userId),
+        ]);
 
-  // Calculate metrics
-  const totalAssignments = myAssignments.length;
-  const completedAssignments = myAssignments.filter(a => a.status === 'completed').length;
-  const activeAssignments = myAssignments.filter(a => a.status === 'in_progress').length;
-  const totalLeads = myLeads.length;
-  const hotLeads = myLeads.filter(l => l.status === 'Hot').length;
-  const totalCalls = myCalls.length;
-  const completedCalls = myCalls.filter(c => c.call_status === 'completed').length;
-  const upcomingAppointments = myAppointments.filter(a => 
-    new Date(a.scheduled_at) > new Date() && a.status === 'scheduled'
-  ).length;
+        setAssignments((assignmentsResult.data as EnrichedAssignment[]) || []);
+        setAppointments(appointmentsResult.data || []);
+        setCallLogs(callLogsResult.data || []);
+        setLeads(leadsResult.data || []);
+        setTasks(tasksResult.data || []);
+        setIsLoading(false);
+        };
+
+        fetchData();
+    }, [userId]);
+    
+    const handleCallClick = (assignment: EnrichedAssignment) => {
+        if (assignment.customer?.phone) {
+            setCallTarget({
+                customerId: assignment.customer_id,
+                customerPhone: assignment.customer.phone,
+                customerName: `${assignment.customer.first_name} ${assignment.customer.last_name}`
+            });
+        } else {
+            alert('Customer phone number is not available.');
+        }
+    };
+    
+    const handleCallEnd = () => {
+        setCallTarget(null);
+    };
+
+    // Calculate metrics
+    const totalAssignments = assignments.length;
+    const activeAssignments = assignments.filter(a => a.status === 'in_progress' || a.status === 'assigned').length;
+    const totalLeads = leads.length;
+    const hotLeads = leads.filter(l => l.status === 'Hot').length;
+    const totalCalls = callLogs.length;
+    const completedCalls = callLogs.filter(c => c.call_status === 'completed').length;
+    const upcomingAppointments = appointments.filter(a => 
+        new Date(a.scheduled_at) > new Date() && a.status === 'scheduled'
+    ).length;
+    const openTasks = tasks.filter(t => t.status !== 'Done').length;
+
+
+    if (isLoading) {
+        return <div>Loading dashboard...</div>;
+    }
+
 
   return (
     <div className="space-y-6">
@@ -75,13 +125,13 @@ export async function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboar
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">My Leads</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">My Tasks</CardTitle>
+            <ListTodo className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalLeads}</div>
+            <div className="text-2xl font-bold">{tasks.length}</div>
             <p className="text-xs text-muted-foreground">
-              {hotLeads} hot leads
+              {openTasks} open
             </p>
           </CardContent>
         </Card>
@@ -105,7 +155,7 @@ export async function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboar
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{myAppointments.length}</div>
+            <div className="text-2xl font-bold">{appointments.length}</div>
             <p className="text-xs text-muted-foreground">
               {upcomingAppointments} upcoming
             </p>
@@ -114,61 +164,81 @@ export async function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboar
       </div>
 
       {/* Exotel Call Interface */}
-      <ExotelCallInterface agentId={userId} />
+       <ExotelCallInterface 
+        agentId={userId} 
+        callTarget={callTarget}
+        onCallEnd={handleCallEnd}
+      />
 
-      {/* My Assignments */}
-      <Card>
-        <CardHeader>
-          <CardTitle>My Customer Assignments</CardTitle>
-          <CardDescription>
-            Customers assigned to you for follow-up
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {myAssignments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No assignments yet
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {myAssignments.slice(0, 5).map((assignment) => (
-                <div key={assignment.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-medium">
-                        {assignment.customer?.first_name?.[0]}{assignment.customer?.last_name?.[0]}
-                      </span>
+        <div className="grid gap-6 md:grid-cols-2">
+            {/* My Tasks */}
+            <Card>
+                <CardHeader>
+                <CardTitle>My Tasks</CardTitle>
+                <CardDescription>
+                    Your assigned tasks and follow-ups.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                {tasks.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                    No tasks assigned yet.
                     </div>
-                    <div>
-                      <p className="font-medium">
-                        {assignment.customer?.first_name} {assignment.customer?.last_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{assignment.customer?.email}</p>
-                      <div className="flex gap-2 mt-1">
-                        <Badge variant="outline">{assignment.assignment_type}</Badge>
-                        <Badge variant="outline" className={
-                          assignment.priority === 'high' ? 'bg-red-100 text-red-800' :
-                          assignment.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
-                        }>
-                          {assignment.priority}
-                        </Badge>
-                      </div>
+                ) : (
+                    <TaskList tasks={tasks.slice(0, 5)} />
+                )}
+                </CardContent>
+            </Card>
+
+            {/* My Assignments */}
+            <Card>
+                <CardHeader>
+                <CardTitle>My Customer Assignments</CardTitle>
+                <CardDescription>
+                    Customers assigned to you for follow-up
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                {assignments.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                    No assignments yet
                     </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Badge variant="outline">{assignment.status}</Badge>
-                    <Button size="sm" variant="outline">
-                      <Phone className="h-4 w-4 mr-1" />
-                      Call
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ) : (
+                    <div className="space-y-4">
+                    {assignments.slice(0, 5).map((assignment) => (
+                        <div key={assignment.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-medium">
+                                {assignment.customer?.first_name?.[0]}{assignment.customer?.last_name?.[0]}
+                            </span>
+                            </div>
+                            <div>
+                            <p className="font-medium">
+                                {assignment.customer?.first_name} {assignment.customer?.last_name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">{assignment.customer?.email}</p>
+                            <div className="flex gap-2 mt-1">
+                                <Badge variant="outline">{assignment.priority}</Badge>
+                                <Badge variant="secondary">{assignment.status}</Badge>
+                            </div>
+                            </div>
+                        </div>
+                        <div className="flex space-x-2">
+                             <Button size="sm" variant="outline" onClick={() => handleCallClick(assignment)}>
+                                <Phone className="h-4 w-4 mr-1" />
+                                Call
+                            </Button>
+                        </div>
+                        </div>
+                    ))}
+                    </div>
+                )}
+                </CardContent>
+            </Card>
+        </div>
     </div>
   );
 }
+
+    
