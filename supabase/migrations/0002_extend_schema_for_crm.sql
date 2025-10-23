@@ -1,18 +1,25 @@
 
--- Drop existing objects to start fresh and avoid conflicts
--- This makes the script idempotent
+-- This script is designed to be idempotent and can be run multiple times safely.
 DO $$
 BEGIN
-    DROP TABLE IF EXISTS public.agent_assignments CASCADE;
-    DROP TABLE IF EXISTS public.tasks CASCADE;
-    DROP TABLE IF EXISTS public.property_shares CASCADE;
-    DROP TABLE IF EXISTS public.appointments CASCADE;
-    DROP TABLE IF EXISTS public.call_logs CASCADE;
-    DROP TABLE IF EXISTS public.field_visits CASCADE;
-    DROP TABLE IF EXISTS public.notifications CASCADE;
-    DROP TABLE IF EXISTS public.integration_settings CASCADE;
-    DROP TABLE IF EXISTS public.property_interests CASCADE;
+    -- Drop all related objects in reverse order of creation to ensure a clean slate
+    -- This is necessary to resolve previous migration errors and start fresh.
+    DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+    DROP FUNCTION IF EXISTS public.handle_new_user();
 
+    -- Drop tables, cascading to dependent objects like foreign keys.
+    DROP TABLE IF EXISTS public.integration_settings CASCADE;
+    DROP TABLE IF EXISTS public.notifications CASCADE;
+    DROP TABLE IF EXISTS public.field_visits CASCADE;
+    DROP TABLE IF EXISTS public.call_logs CASCADE;
+    DROP TABLE IF EXISTS public.appointments CASCADE;
+    DROP TABLE IF EXISTS public.property_shares CASCADE;
+    DROP TABLE IF EXISTS public.tasks CASCADE;
+    DROP TABLE IF EXISTS public.agent_assignments CASCADE;
+    DROP TABLE IF EXISTS public.property_interests CASCADE;
+    DROP TABLE IF EXISTS public.lead_notes CASCADE;
+
+    -- Drop all ENUM types to prevent "already exists" errors during re-creation.
     DROP TYPE IF EXISTS public.property_type;
     DROP TYPE IF EXISTS public.task_status;
     DROP TYPE IF EXISTS public.assignment_type;
@@ -27,17 +34,18 @@ BEGIN
     DROP TYPE IF EXISTS public.integration_type;
     DROP TYPE IF EXISTS public.interest_level;
     DROP TYPE IF EXISTS public.interest_status;
+
 END$$;
 
+-- == Create all custom ENUM types correctly ==
+-- These types define the allowed values for various columns in the database.
 
--- Create all custom ENUM types correctly
-CREATE TYPE public.property_type AS ENUM ('Residential', 'Commercial', 'Land');
-CREATE TYPE public.task_status AS ENUM ('Todo', 'InProgress', 'Done');
+CREATE TYPE public.interest_level AS ENUM ('interested', 'very_interested', 'ready_to_buy');
+CREATE TYPE public.interest_status AS ENUM ('pending', 'assigned', 'contacted', 'meeting_scheduled', 'completed', 'cancelled');
 CREATE TYPE public.assignment_type AS ENUM ('property_interest', 'follow_up', 'cold_call', 'meeting');
 CREATE TYPE public.assignment_status AS ENUM ('assigned', 'accepted', 'in_progress', 'completed', 'cancelled');
 CREATE TYPE public.assignment_priority AS ENUM ('low', 'medium', 'high', 'urgent');
-CREATE TYPE public.interest_level AS ENUM ('interested', 'very_interested', 'ready_to_buy');
-CREATE TYPE public.interest_status AS ENUM ('pending', 'assigned', 'contacted', 'meeting_scheduled', 'completed', 'cancelled');
+CREATE TYPE public.task_status AS ENUM ('Todo', 'InProgress', 'Done');
 CREATE TYPE public.appointment_status AS ENUM ('scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show');
 CREATE TYPE public.call_type AS ENUM ('inbound', 'outbound');
 CREATE TYPE public.call_status AS ENUM ('initiated', 'ringing', 'answered', 'completed', 'failed', 'busy', 'no_answer');
@@ -46,8 +54,10 @@ CREATE TYPE public.notification_type AS ENUM ('property_interest', 'appointment_
 CREATE TYPE public.notification_channel AS ENUM ('app', 'email', 'whatsapp', 'sms');
 CREATE TYPE public.integration_type AS ENUM ('exotel', 'whatsapp', 'olx', '99acres', 'facebook', 'instagram');
 
--- Create property_interests table with UUID primary key
-CREATE TABLE IF NOT EXISTS public.property_interests (
+-- == Create tables with correct foreign key references ==
+
+-- property_interests: Tracks customer interest in a specific property.
+CREATE TABLE public.property_interests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_id UUID NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
     customer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -59,8 +69,8 @@ CREATE TABLE IF NOT EXISTS public.property_interests (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Create agent_assignments table with correct foreign key type
-CREATE TABLE IF NOT EXISTS public.agent_assignments (
+-- agent_assignments: Links a customer/interest to a specific team member.
+CREATE TABLE public.agent_assignments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_interest_id UUID REFERENCES public.property_interests(id) ON DELETE SET NULL,
     agent_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -75,21 +85,32 @@ CREATE TABLE IF NOT EXISTS public.agent_assignments (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Create all other necessary tables
-CREATE TABLE IF NOT EXISTS public.tasks (
+-- tasks: Individual tasks assigned to team members.
+CREATE TABLE public.tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     description TEXT,
     status public.task_status NOT NULL DEFAULT 'Todo',
     due_date TIMESTAMPTZ,
     assigned_to UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-    created_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL, -- Correctly references public.profiles
     related_lead_id UUID REFERENCES public.leads(id) ON DELETE SET NULL,
     related_property_id UUID REFERENCES public.properties(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.property_shares (
+-- lead_notes: Notes related to a specific lead.
+CREATE TABLE public.lead_notes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES public.leads(id) ON DELETE CASCADE,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL, -- Correctly references public.profiles
+    note TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Other tables required for full application functionality
+
+CREATE TABLE public.property_shares (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_id UUID NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
     platform TEXT NOT NULL,
@@ -98,7 +119,7 @@ CREATE TABLE IF NOT EXISTS public.property_shares (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.appointments (
+CREATE TABLE public.appointments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_interest_id UUID NOT NULL REFERENCES public.property_interests(id) ON DELETE CASCADE,
     customer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -112,7 +133,7 @@ CREATE TABLE IF NOT EXISTS public.appointments (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.call_logs (
+CREATE TABLE public.call_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     call_id TEXT NOT NULL UNIQUE,
     agent_id UUID NOT NULL REFERENCES public.profiles(id),
@@ -128,7 +149,7 @@ CREATE TABLE IF NOT EXISTS public.call_logs (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.field_visits (
+CREATE TABLE public.field_visits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     agent_id UUID NOT NULL REFERENCES public.profiles(id),
     property_id UUID REFERENCES public.properties(id),
@@ -143,7 +164,7 @@ CREATE TABLE IF NOT EXISTS public.field_visits (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.notifications (
+CREATE TABLE public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     type public.notification_type NOT NULL,
@@ -156,7 +177,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.integration_settings (
+CREATE TABLE public.integration_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     integration_type public.integration_type NOT NULL UNIQUE,
     settings JSONB NOT NULL,
@@ -166,11 +187,9 @@ CREATE TABLE IF NOT EXISTS public.integration_settings (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Re-create the function and trigger to be safe
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-DROP FUNCTION IF EXISTS public.handle_new_user();
-
-CREATE FUNCTION public.handle_new_user()
+-- == Function and Trigger for new user signup ==
+-- This function automatically creates a 'profile' for every new user signing up via Supabase Auth.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO public.profiles (id, first_name, last_name, email, phone, role, approval_status)
@@ -181,12 +200,13 @@ BEGIN
         new.email,
         new.raw_user_meta_data->>'phone',
         (new.raw_user_meta_data->>'role')::public.user_role,
-        'approved' -- Set to approved since admin is creating the user
+        'approved' -- Users created by admin are auto-approved.
     );
     RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Recreate the trigger to call the function on new user creation.
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
