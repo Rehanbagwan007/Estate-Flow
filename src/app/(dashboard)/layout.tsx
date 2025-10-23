@@ -2,15 +2,13 @@ import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -29,7 +27,7 @@ export default async function DashboardLayout({
     // If the profile doesn't exist, something is wrong.
     // The dashboard page will handle the ultimate redirect to login.
     // Returning children prevents a render error for a moment.
-    return <>{children}</>;
+     return redirect('/login?message=Profile not found. Please log in again.');
   }
 
   return (

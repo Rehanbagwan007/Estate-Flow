@@ -1,11 +1,9 @@
 import { RoleDashboard } from '@/components/dashboard/role-dashboard';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 
 export default async function DashboardPage() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -23,7 +21,7 @@ export default async function DashboardPage() {
   if (!profile) {
     // This can happen in a race condition right after signup, but since admin creates users,
     // it's more likely an error. Safest place to go is login.
-    redirect('/login?message=Profile not found.');
+    return redirect('/login?message=Profile not found.');
   }
 
   // Render the role-specific dashboard.

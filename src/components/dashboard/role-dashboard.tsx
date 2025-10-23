@@ -8,7 +8,6 @@ import { CallerDashboard } from './caller-dashboard';
 import { SalesManagerDashboard } from './sales-manager-dashboard';
 import { SalesExecutiveDashboard } from './sales-executive-dashboard';
 import type { EnrichedProperty, EnrichedInterest, EnrichedAppointment } from './customer-dashboard'
-import { cookies } from 'next/headers';
 import type { Profile, Property, PropertyInterest, Appointment, CallLog } from '@/lib/types';
 
 interface RoleDashboardProps {
@@ -22,8 +21,7 @@ interface EnrichedInterestForAdmin extends PropertyInterest {
 }
 
 export async function RoleDashboard({ userRole, userId }: RoleDashboardProps) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   switch (userRole) {
     case 'super_admin':

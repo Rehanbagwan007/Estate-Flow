@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Heart, Building2, Calendar, Phone, Trash2 } from 'lucide-react';
-import { cookies } from 'next/headers';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,8 +19,7 @@ import {
 import { deleteInterest } from './actions';
 
 export default async function MyInterestsPage() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser()

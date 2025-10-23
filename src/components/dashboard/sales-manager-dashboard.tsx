@@ -11,15 +11,13 @@ import {
   UserCheck,
   Building2
 } from 'lucide-react';
-import { cookies } from 'next/headers';
 
 interface SalesManagerDashboardProps {
   userId: string;
 }
 
 export async function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   // Fetch sales manager data
   const [
