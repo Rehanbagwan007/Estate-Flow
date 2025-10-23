@@ -16,6 +16,7 @@ import { ExotelCallInterface } from '../calls/exotel-call-interface';
 import type { AgentAssignment, Appointment, CallLog, Profile, Property, PropertyInterest, Task } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { TaskList } from '../tasks/task-list';
+import { TaskDetailsDialog } from '../tasks/task-details-dialog';
 
 interface EnrichedAssignment extends AgentAssignment {
     customer: Profile;
@@ -44,6 +45,7 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
 
   // State for the call interface
   const [callTarget, setCallTarget] = useState<{ customerId: string; customerPhone: string; customerName: string } | null>(null);
+  const [selectedTask, setSelectedTask] = useState<EnrichedTask | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -73,7 +75,7 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
         supabase.from('tasks')
           .select(`
             *,
-            property:related_property_id(*, property_media(*)),
+            property:related_property_id(*, property_media(file_path)),
             customer:related_customer_id(*)
           `)
           .eq('assigned_to', userId)
@@ -130,96 +132,106 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Agent Dashboard</h1>
-        <p className="text-muted-foreground">
-          Manage your assigned customers and property listings
-        </p>
-      </div>
-
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">My Assignments</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalAssignments}</div>
-            <p className="text-xs text-muted-foreground">
-              {activeAssignments} active
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">My Tasks</CardTitle>
-            <ListTodo className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{tasks.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {openTasks} open
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Appointments</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalAppointments}</div>
-            <p className="text-xs text-muted-foreground">
-              {upcomingAppointments} upcoming
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Recent Calls</CardTitle>
-            <Phone className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{recentCalls}</div>
-            <p className="text-xs text-muted-foreground">
-              This week
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Exotel Call Interface */}
-      <ExotelCallInterface 
-        agentId={userId} 
-        callTarget={callTarget}
-        onCallEnd={handleCallEnd}
+    <>
+      <TaskDetailsDialog
+        task={selectedTask}
+        isOpen={!!selectedTask}
+        onClose={() => setSelectedTask(null)}
+        onCall={handleCallClick}
       />
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Agent Dashboard</h1>
+          <p className="text-muted-foreground">
+            Manage your assigned customers and property listings
+          </p>
+        </div>
 
-      <div className="grid gap-6">
-        {/* My Tasks */}
-        <Card>
-            <CardHeader>
-            <CardTitle>My Tasks</CardTitle>
-            <CardDescription>
-                Your assigned tasks and follow-ups.
-            </CardDescription>
+        {/* Key Metrics */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">My Assignments</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-            {tasks.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                No tasks assigned yet.
-                </div>
-            ) : (
-                <TaskList tasks={tasks} onCall={handleCallClick} />
-            )}
+              <div className="text-2xl font-bold">{totalAssignments}</div>
+              <p className="text-xs text-muted-foreground">
+                {activeAssignments} active
+              </p>
             </CardContent>
-        </Card>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">My Tasks</CardTitle>
+              <ListTodo className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{tasks.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {openTasks} open
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Appointments</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalAppointments}</div>
+              <p className="text-xs text-muted-foreground">
+                {upcomingAppointments} upcoming
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Recent Calls</CardTitle>
+              <Phone className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{recentCalls}</div>
+              <p className="text-xs text-muted-foreground">
+                This week
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Exotel Call Interface */}
+        {callTarget && (
+          <ExotelCallInterface 
+            agentId={userId} 
+            callTarget={callTarget}
+            onCallEnd={handleCallEnd}
+          />
+        )}
+
+        <div className="grid gap-6">
+          {/* My Tasks */}
+          <Card>
+              <CardHeader>
+              <CardTitle>My Tasks</CardTitle>
+              <CardDescription>
+                  Your assigned tasks and follow-ups.
+              </CardDescription>
+              </CardHeader>
+              <CardContent>
+              {tasks.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                  No tasks assigned yet.
+                  </div>
+              ) : (
+                  <TaskList tasks={tasks} onCall={handleCallClick} onTaskSelect={setSelectedTask} />
+              )}
+              </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -44,8 +44,10 @@ export function ExotelCallInterface({
   useEffect(() => {
     if (callTarget && callStatus === 'idle') {
       handleStartCall(callTarget.customerPhone, callTarget.customerId);
+    } else if (!callTarget) {
+        resetCallState();
     }
-  }, [callTarget, callStatus]);
+  }, [callTarget]);
 
   // Simulate call duration timer
   useEffect(() => {
@@ -163,21 +165,19 @@ export function ExotelCallInterface({
   }
 
   return (
-    <Card className="bg-secondary">
+    <Card className="bg-secondary fixed bottom-4 right-4 w-80 z-50">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
                 {isCalling || callStatus === 'ringing' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Phone className="h-5 w-5" />}
-                {isCalling ? 'Starting Call...' : callStatus === 'ringing' ? 'Ringing...' : 'On Call'}
+                {isCalling ? 'Starting...' : callStatus === 'ringing' ? 'Ringing...' : 'On Call'}
             </div>
-            {callStatus !== 'idle' && (
-                <Button variant="ghost" size="icon" onClick={() => handleEndCall()}>
-                    <X className="h-4 w-4" />
-                </Button>
-            )}
+            <Button variant="ghost" size="icon" onClick={() => handleEndCall()}>
+                <X className="h-4 w-4" />
+            </Button>
         </CardTitle>
         <CardDescription>
-          {callTarget ? `Calling ${callTarget.customerName} at ${callTarget.customerPhone}` : 'Outbound call in progress'}
+          {callTarget ? `Calling ${callTarget.customerName}` : 'Outbound call in progress'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -232,5 +232,3 @@ export function ExotelCallInterface({
     </Card>
   );
 }
-
-    

@@ -9,7 +9,6 @@ import { Button } from '../ui/button';
 import { Building2, Phone, User, Info } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { useState } from 'react';
-import { TaskDetailsDialog } from './task-details-dialog';
 
 interface EnrichedTask extends Task {
     property?: (Property & { property_media?: { file_path: string }[] }) | null;
@@ -19,19 +18,11 @@ interface EnrichedTask extends Task {
 interface TaskListProps {
   tasks: EnrichedTask[];
   onCall: (target: { customerId: string; customerPhone: string; customerName: string }) => void;
+  onTaskSelect: (task: EnrichedTask) => void;
 }
 
-export function TaskList({ tasks, onCall }: TaskListProps) {
-  const [selectedTask, setSelectedTask] = useState<EnrichedTask | null>(null);
-
+export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
   return (
-    <>
-      <TaskDetailsDialog 
-        task={selectedTask}
-        isOpen={!!selectedTask}
-        onClose={() => setSelectedTask(null)}
-        onCall={onCall}
-      />
       <div className="space-y-4">
         {tasks.map((task) => (
           <Card key={task.id} className={task.status === 'Done' ? 'bg-muted/50' : ''}>
@@ -74,7 +65,7 @@ export function TaskList({ tasks, onCall }: TaskListProps) {
                   )}
               </CardContent>
               <CardFooter className="p-4 pt-0 flex justify-end gap-2">
-                   <Button variant="outline" size="sm" onClick={() => setSelectedTask(task)}>
+                   <Button variant="outline" size="sm" onClick={() => onTaskSelect(task)}>
                       <Info className="mr-2 h-4 w-4" />
                       Details
                   </Button>
@@ -96,6 +87,5 @@ export function TaskList({ tasks, onCall }: TaskListProps) {
           </Card>
         ))}
       </div>
-    </>
   );
 }
