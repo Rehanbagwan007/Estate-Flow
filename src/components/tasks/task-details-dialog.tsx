@@ -1,12 +1,12 @@
 
 'use client';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import type { Task, Property, Profile } from '@/lib/types';
-import { Building2, User, DollarSign, MapPin, Bed, Bath, Square } from 'lucide-react';
+import { Building2, User, DollarSign, MapPin, Bed, Bath, Square, Phone } from 'lucide-react';
 import Image from 'next/image';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
+import { Button } from '@/components/ui/button';
 
 interface EnrichedTask extends Task {
     property?: (Property & { property_media?: { file_path: string }[] }) | null;
@@ -17,19 +17,31 @@ interface TaskDetailsDialogProps {
     task: EnrichedTask | null;
     isOpen: boolean;
     onClose: () => void;
+    onCall: (target: { customerId: string; customerPhone: string; customerName: string }) => void;
 }
 
-export function TaskDetailsDialog({ task, isOpen, onClose }: TaskDetailsDialogProps) {
+export function TaskDetailsDialog({ task, isOpen, onClose, onCall }: TaskDetailsDialogProps) {
     if (!task) return null;
+
+    const handleCallClick = () => {
+        if (task.customer && task.customer.phone) {
+            onCall({
+                customerId: task.customer.id,
+                customerPhone: task.customer.phone,
+                customerName: `${task.customer.first_name} ${task.customer.last_name}`
+            });
+            onClose(); // Close the dialog to show the call interface
+        }
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-lg grid-rows-[auto_1fr_auto]">
                 <DialogHeader>
                     <DialogTitle>{task.title}</DialogTitle>
                     <DialogDescription>{task.description}</DialogDescription>
                 </DialogHeader>
-                <ScrollArea className="max-h-[70vh] pr-6">
+                <ScrollArea className="max-h-[60vh] pr-6 -mr-6">
                     <div className="space-y-4 py-4">
                         {task.customer && (
                             <div className="space-y-2">
@@ -65,6 +77,18 @@ export function TaskDetailsDialog({ task, isOpen, onClose }: TaskDetailsDialogPr
                         )}
                     </div>
                 </ScrollArea>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Close</Button>
+                    {task.customer && task.customer.phone && (
+                        <Button
+                            onClick={handleCallClick}
+                            disabled={task.status === 'Done'}
+                        >
+                            <Phone className="mr-2 h-4 w-4" />
+                            Call Customer
+                        </Button>
+                    )}
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

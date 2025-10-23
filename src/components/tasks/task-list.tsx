@@ -30,6 +30,7 @@ export function TaskList({ tasks, onCall }: TaskListProps) {
         task={selectedTask}
         isOpen={!!selectedTask}
         onClose={() => setSelectedTask(null)}
+        onCall={onCall}
       />
       <div className="space-y-4">
         {tasks.map((task) => (
