@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error creating property interest:', error);
-      return NextResponse.json({ error: 'Failed to create interest' }, { status: 500 });
+      return NextResponse.json({ error: `Failed to create interest: ${error.message}` }, { status: 500 });
     }
 
     // Update customer phone if provided
@@ -56,35 +56,12 @@ export async function POST(request: NextRequest) {
         .update({ phone })
         .eq('id', user.id);
     }
-
-    // Create notification for admins
-    const { data: admins } = await supabase
-      .from('profiles')
-      .select('id')
-      .in('role', ['admin', 'super_admin']);
-
-    if (admins && admins.length > 0) {
-      const notifications = admins.map(admin => ({
-        user_id: admin.id,
-        type: 'property_interest',
-        title: 'New Property Interest',
-        message: `A customer has expressed interest in a property`,
-        data: {
-          property_interest_id: interest.id,
-          property_id,
-          customer_id: user.id
-        }
-      }));
-
-      await supabase
-        .from('notifications')
-        .insert(notifications);
-    }
-
+    
     return NextResponse.json({ success: true, interest });
   } catch (error) {
     console.error('Error in property interests API:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
