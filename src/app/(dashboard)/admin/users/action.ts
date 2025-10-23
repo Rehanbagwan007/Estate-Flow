@@ -7,7 +7,8 @@ import { signupSchema } from '@/schemas';
 import { Resend } from 'resend';
 import { CredentialsEmail } from '@/components/emails/redentials-email';
 
-export const createServiceRoleClient = () => {
+// This function is now a private helper and is not exported.
+const createServiceRoleClient = () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

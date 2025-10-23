@@ -2,9 +2,26 @@
 
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { createServiceRoleClient } from '@/app/(dashboard)/admin/users/action';
 import { loginSchema, signupSchema } from '@/schemas';
 import { redirect } from 'next/navigation';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
+// This function is now a private helper and is not exported.
+const createServiceRoleClient = () => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceKey) {
+        throw new Error('Supabase URL or service role key is missing.');
+    }
+    
+    return createSupabaseClient(supabaseUrl, serviceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+};
 
 export async function login(values: z.infer<typeof loginSchema>) {
   const supabase = createClient();
