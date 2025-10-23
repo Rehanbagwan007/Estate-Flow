@@ -14,8 +14,10 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // The layout already handles the redirect if there is no user.
   if (!user) {
-    redirect('/login');
+    // This should theoretically not be reached because of the layout's protection
+    return redirect('/login');
   }
 
   const { data: profile } = await supabase
@@ -24,10 +26,17 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
+  // The layout has also handled the case of a missing profile.
   if (!profile) {
+<<<<<<< HEAD
     // This can happen in a race condition right after signup.
     // Safest place to go is login, with a message.
     return redirect('/login?message=Profile not found. Please try logging in again.');
+=======
+    // This should also not be reached
+    await supabase.auth.signOut();
+    return redirect('/login?message=Profile not found. Please log in again.');
+>>>>>>> 2a2cb5be7b204e2fcf4530a65a8b7c337ab406e7
   }
 
   const renderDashboard = () => {

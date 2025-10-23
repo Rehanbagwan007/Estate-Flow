@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { loginSchema, signupSchema } from '@/schemas';
+import { loginSchema } from '@/schemas';
 import { redirect } from 'next/navigation';
 
 export async function login(values: z.infer<typeof loginSchema>) {
@@ -13,6 +13,7 @@ export async function login(values: z.infer<typeof loginSchema>) {
     return { error: error.message };
   }
   
+
   // After a successful login, the user should be redirected.
   // The middleware will handle unauthenticated access, but after login,
   // we want to make sure the user lands on the dashboard.
@@ -38,5 +39,4 @@ export async function signup(values: z.infer<typeof signupSchema>) {
   }
 
   // The handle_new_user trigger in schema.sql will create the profile.
-  return { data };
-}
+  return { data }}
