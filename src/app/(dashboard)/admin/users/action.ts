@@ -52,12 +52,12 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
             role: values.role,
         },
     });
-
+   
     if (authError) {
 
         console.error('Error creating user in Auth:', authError);
         // Provide a more specific error message if the key is likely the issue.
-        if (authError.message.includes('service_role key') || authError.code === 'unexpected_failure') {
+        if ( authError.code === 'unexpected_failure') {
             return { error: 'Failed to create user due to a server configuration issue. Please ensure your SUPABASE_SERVICE_ROLE_KEY is correct and valid for your project.' };
         }
 
