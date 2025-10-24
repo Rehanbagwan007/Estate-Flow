@@ -30,6 +30,7 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
     try {
         supabaseAdmin = createAdminClient();
     } catch (e: any) {
+        console.log(e)
         return { error: e.message };
     }
 
