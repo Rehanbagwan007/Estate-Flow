@@ -16,12 +16,11 @@ const createAdminClient = () => {
         throw new Error('Supabase URL or service role key is missing. Make sure SUPABASE_SERVICE_ROLE_KEY is set in your environment variables.');
     }
     
-    // Explicitly specify auth options to use the service_role key
+    // Correctly initialize the admin client for server-side operations
     return createSupabaseClient(supabaseUrl, serviceKey, {
       auth: {
         autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false
+        persistSession: false
       }
     });
 };
