@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -13,7 +12,7 @@ const createAdminClient = () => {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceKey) {
-        throw new Error('Supabase URL or service role key is missing. Make sure SUPABASE_SERVICE_ROLE_KEY is set in your environment variables.');
+        throw new Error('Supabase URL or service role key is missing.');
     }
     
     return createSupabaseClient(supabaseUrl, serviceKey, {
@@ -25,70 +24,42 @@ const createAdminClient = () => {
 };
 
 export async function createUser(values: z.infer<typeof signupSchema>) {
-    let supabaseAdmin;
-    try {
-        supabaseAdmin = createAdminClient();
-    } catch (e: any) {
-        console.log(e)
-        return { error: e.message };
+    const supabaseAdmin = createAdminClient();
+    const resendApiKey = process.env.RESEND_API_KEY;
+
+    if (!resendApiKey) {
+        throw new Error('Resend API key is missing. Please set it in your .env.local file.');
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY;
-    if (!resendApiKey) {
-        return { error: 'Resend API key is missing. Cannot send emails.' };
-    }
     const resend = new Resend(resendApiKey);
 
     // Step 1: Create the user in Supabase Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: values.email,
+        phone: values.phone,
         password: values.password,
-
         email_confirm: true,
-
         user_metadata: {
-            role: values.role, // Pass role for trigger if it's still active
-        },
-    });
-   
-    if (authError) {
-
-        console.error('Error creating user in Auth:', authError);
-
-        return { error: `Failed to create auth user: ${authError.message}` };
-
-    }
-
-    const user = authData.user;
-    if (!user) {
-        return { error: 'User was not created in Auth.' };
-    }
-    
-    // Step 2: Explicitly insert into profiles table using the admin client.
-    // This bypasses RLS and is more reliable than the trigger.
-    const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .insert({
-            id: user.id,
             first_name: values.firstName,
             last_name: values.lastName,
-            email: values.email,
-            phone: values.phone,
             role: values.role,
-        });
+            phone: values.phone,
+        },
+    });
 
-    if (profileError) {
-        console.error('Error creating user profile:', profileError);
-        // If profile creation fails, we should delete the auth user to avoid orphans
-        await supabaseAdmin.auth.admin.deleteUser(user.id);
-        return { error: `Failed to create user profile: ${profileError.message}` };
+    if (authError) {
+        console.error('Error creating user in Auth:', authError);
+        return { error: `Failed to create user: ${authError.message}` };
     }
 
+    if (!authData.user) {
+        return { error: 'User was not created in Auth.' };
+    }
 
-    // Step 3: Send the credentials email using Resend
+    // Step 2: Send the credentials email using Resend
     try {
         await resend.emails.send({
-            from: 'EstateFlow CRM <onboarding@resend.dev>',
+            from: 'EstateFlow CRM <onboarding@resend.dev>', // You can change this
             to: values.email,
             subject: 'Your New Account Credentials',
             react: CredentialsEmail({
@@ -99,23 +70,35 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         });
     } catch (emailError) {
         console.error('Email sending error:', emailError);
-        return { data: user, message: 'User was created, but the credential email could not be sent.' };
+        // Even if the email fails, we don't want to block the user creation.
+        // You might want to add more robust error handling here.
+        return { error: 'User was created, but the credential email could not be sent.' };
     }
     
     revalidatePath('/(dashboard)/admin/users');
 
-    return { data: user, message: 'User created and credentials have been sent!' };
+    return { data: authData.user, message: 'User created and credentials have been sent!' };
 }
 
 export async function updateUserRole(userId: string, role: z.infer<typeof signupSchema>['role']) {
     const supabaseAdmin = createAdminClient();
   
-    const { data, error: profileError } = await supabaseAdmin
+    // Update role in auth metadata
+    const { data: user, error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { user_metadata: { role } }
+    );
+  
+    if (authError) {
+      console.error('Error updating user auth metadata:', authError.message);
+      return { error: `Failed to update user role in auth: ${authError.message}` };
+    }
+  
+    // Update role in profiles table
+    const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({ role: role })
-      .eq('id', userId)
-      .select()
-      .single();
+      .eq('id', userId);
   
     if (profileError) {
       console.error('Error updating profile role:', profileError.message);
@@ -124,12 +107,14 @@ export async function updateUserRole(userId: string, role: z.infer<typeof signup
   
     revalidatePath('/(dashboard)/admin/users');
   
-    return { data, message: 'User role updated successfully!' };
+    return { data: user, message: 'User role updated successfully!' };
 }
   
 export async function deleteUser(userId: string) {
     const supabaseAdmin = createAdminClient();
 
+    // The trigger `delete_user_profile_on_auth_user_delete` in schema.sql
+    // should automatically delete the corresponding profile.
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (error) {
