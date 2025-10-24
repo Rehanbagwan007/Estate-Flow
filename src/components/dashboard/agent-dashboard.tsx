@@ -46,6 +46,7 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
   const [callTarget, setCallTarget] = useState<{ customerId: string; customerPhone: string; customerName: string } | null>(null);
   const [selectedTask, setSelectedTask] = useState<EnrichedTask | null>(null);
 
+
   useEffect(() => {
     const supabase = createClient();
     const fetchData = async () => {
@@ -112,6 +113,7 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
     setCallTarget(null);
     // Optionally refetch call logs here
   };
+
 
   // Calculate metrics
   const totalAssignments = assignments.length;

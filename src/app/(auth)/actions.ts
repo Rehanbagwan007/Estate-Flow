@@ -35,6 +35,7 @@ export async function signup(values: z.infer<typeof signupSchema>) {
   });
 
   if (error) {
+    console.log(error)
     return { error: error.message };
   }
 

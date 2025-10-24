@@ -52,6 +52,8 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
         supabase.from('appointments').select('*, agent:profiles!appointments_agent_id_fkey(*), customer:profiles!appointments_customer_id_fkey(*)'),
       ]);
 
+   
+
       setPendingUsers(pendingUsersResult.data || []);
       setProperties(propertiesResult.data || []);
       setPropertyInterests((propertyInterestsResult.data as EnrichedInterest[]) || []);
