@@ -26,10 +26,10 @@ export default async function DashboardLayout({
     .single();
 
   if (!profile) {
-    // If a user exists but a profile doesn't, it's a data integrity issue.
+    // If a user exists but a profile doesn't, it's a data integrity issue, often due to RLS.
     // Sign out the user and redirect to login to avoid a crash loop.
     await supabase.auth.signOut();
-    return redirect('/login?message=Profile not found. Please log in again.');
+    return redirect('/login?message=Your user profile could not be loaded. This might be due to a data sync issue or a security policy. Please try logging in again.');
   }
 
   return (
