@@ -42,15 +42,17 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
     const resend = new Resend(resendApiKey);
 
     // Step 1: Create the user in Supabase Auth
+    // The phone number is removed from here to avoid the `unexpected_failure` error.
+    // It will be added to the profiles table by the `handle_new_user` trigger.
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: values.email,
-        phone: values.phone,
         password: values.password,
         email_confirm: true, // Auto-confirm email since admin is creating
         user_metadata: {
             first_name: values.firstName,
             last_name: values.lastName,
             role: values.role,
+            phone: values.phone
         },
     });
 
