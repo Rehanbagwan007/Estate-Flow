@@ -16,6 +16,7 @@ const createAdminClient = () => {
         throw new Error('Supabase URL or service role key is missing. Make sure SUPABASE_SERVICE_ROLE_KEY is set in your environment variables.');
     }
     
+    // Correctly initialize the admin client for server-side operations
     return createSupabaseClient(supabaseUrl, serviceKey, {
       auth: {
         autoRefreshToken: false,
@@ -45,7 +46,9 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         email: values.email,
         phone: values.phone,
         password: values.password,
-        email_confirm: true, // Auto-confirm email
+
+        email_confirm: true, // Auto-confirm email since admin is creating
+
         user_metadata: {
             first_name: values.firstName,
             last_name: values.lastName,
@@ -100,20 +103,14 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
 export async function updateUserRole(userId: string, role: z.infer<typeof signupSchema>['role']) {
     const supabaseAdmin = createAdminClient();
   
-    const { data: user, error: authError } = await supabaseAdmin.auth.admin.updateUserById(
-      userId,
-      { user_metadata: { role } }
-    );
-  
-    if (authError) {
-      console.error('Error updating user auth metadata:', authError.message);
-      return { error: `Failed to update user role in auth: ${authError.message}` };
-    }
-  
-    const { error: profileError } = await supabaseAdmin
+    // The role is stored in the profiles table, not the auth metadata.
+    // We only need to update the profile table.
+    const { data, error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({ role: role })
-      .eq('id', userId);
+      .eq('id', userId)
+      .select()
+      .single();
   
     if (profileError) {
       console.error('Error updating profile role:', profileError.message);
@@ -122,7 +119,7 @@ export async function updateUserRole(userId: string, role: z.infer<typeof signup
   
     revalidatePath('/(dashboard)/admin/users');
   
-    return { data: user, message: 'User role updated successfully!' };
+    return { data, message: 'User role updated successfully!' };
 }
   
 export async function deleteUser(userId: string) {
