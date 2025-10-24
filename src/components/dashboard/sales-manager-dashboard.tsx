@@ -24,6 +24,7 @@ import { ExotelCallInterface } from '../calls/exotel-call-interface';
 interface EnrichedTask extends Task {
     property?: (Property & { property_media?: { file_path: string }[] }) | null;
     customer?: Profile | null;
+    assigned_to_profile?: Profile | null;
 }
 
 interface SalesManagerDashboardProps {
@@ -32,10 +33,10 @@ interface SalesManagerDashboardProps {
 
 export function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
   const [salesExecutives, setSalesExecutives] = useState<Profile[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [assignments, setAssignments] = useState<AgentAssignment[]>([]);
-  const [performance, setPerformance] = useState<CallLog[]>([]);
-  const [tasks, setTasks] = useState<EnrichedTask[]>([]);
+  const [teamLeads, setTeamLeads] = useState<Lead[]>([]);
+  const [teamAssignments, setTeamAssignments] = useState<AgentAssignment[]>([]);
+  const [teamPerformance, setTeamPerformance] = useState<CallLog[]>([]);
+  const [teamTasks, setTeamTasks] = useState<EnrichedTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [callTarget, setCallTarget] = useState<{ customerId: string; customerPhone: string; customerName: string } | null>(null);
@@ -46,25 +47,33 @@ export function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
     const supabase = createClient();
     const fetchData = async () => {
         setIsLoading(true);
-        const [
-            salesExecutivesResult,
-            leadsResult,
-            assignmentsResult,
-            performanceResult,
-            tasksResult,
-        ] = await Promise.all([
-            supabase.from('profiles').select('*').in('role', ['sales_executive_1', 'sales_executive_2']),
-            supabase.from('leads').select('*, assigned_to:profiles(*)'),
-            supabase.from('agent_assignments').select('*, agent:profiles!agent_assignments_agent_id_fkey(*)'),
-            supabase.from('call_logs').select('*, agent:profiles!call_logs_agent_id_fkey(*)'),
-            supabase.from('tasks').select('*, property:related_property_id(*, property_media(file_path)), customer:related_customer_id(*)').eq('assigned_to', userId)
-        ]);
+        // First, get the IDs of the sales executives
+        const { data: executives } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, role')
+            .in('role', ['sales_executive_1', 'sales_executive_2']);
+        
+        const executiveIds = executives?.map(e => e.id) || [];
+        setSalesExecutives(executives || []);
 
-        setSalesExecutives(salesExecutivesResult.data || []);
-        setLeads(leadsResult.data || []);
-        setAssignments(assignmentsResult.data || []);
-        setPerformance(performanceResult.data || []);
-        setTasks(tasksResult.data || []);
+        if (executiveIds.length > 0) {
+            const [
+                leadsResult,
+                assignmentsResult,
+                performanceResult,
+                tasksResult,
+            ] = await Promise.all([
+                supabase.from('leads').select('*, assigned_to:profiles(*)').in('assigned_to', executiveIds),
+                supabase.from('agent_assignments').select('*, agent:profiles!agent_assignments_agent_id_fkey(*)').in('agent_id', executiveIds),
+                supabase.from('call_logs').select('*, agent:profiles!call_logs_agent_id_fkey(*)').in('agent_id', executiveIds),
+                supabase.from('tasks').select('*, property:related_property_id(*, property_media(file_path)), customer:related_customer_id(*), assigned_to_profile:assigned_to(*)').in('assigned_to', executiveIds)
+            ]);
+            
+            setTeamLeads(leadsResult.data || []);
+            setTeamAssignments(assignmentsResult.data || []);
+            setTeamPerformance(performanceResult.data || []);
+            setTeamTasks((tasksResult.data as EnrichedTask[]) || []);
+        }
         setIsLoading(false);
     }
     fetchData();
@@ -84,17 +93,19 @@ export function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
 
 
   // Calculate metrics
-  const totalLeads = leads.length;
-  const hotLeads = leads.filter(l => l.status === 'Hot').length;
-  const assignedLeads = leads.filter(l => l.assigned_to).length;
-  const totalAssignments = assignments.length;
-  const completedAssignments = assignments.filter(a => a.status === 'completed').length;
+  const totalLeads = teamLeads.length;
+  const hotLeads = teamLeads.filter(l => l.status === 'Hot').length;
+  const assignedLeads = teamLeads.filter(l => l.assigned_to).length;
+  const totalAssignments = teamAssignments.length;
+  const completedAssignments = teamAssignments.filter(a => a.status === 'completed').length;
+  const openTasks = teamTasks.filter(t => t.status !== 'Done').length;
+
 
   // Performance by executive
   const executivePerformance = salesExecutives.map(exec => {
-    const execLeads = leads.filter(l => l.assigned_to === exec.id);
-    const execCalls = performance.filter(p => p.agent_id === exec.id);
-    const execAssignments = assignments.filter(a => a.agent_id === exec.id);
+    const execLeads = teamLeads.filter(l => l.assigned_to === exec.id);
+    const execCalls = teamPerformance.filter(p => p.agent_id === exec.id);
+    const execAssignments = teamAssignments.filter(a => a.agent_id === exec.id);
     
     return {
       id: exec.id,
@@ -137,7 +148,7 @@ export function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
+              <CardTitle className="text-sm font-medium">Team Leads</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -156,20 +167,20 @@ export function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
             <CardContent>
               <div className="text-2xl font-bold">{assignedLeads}</div>
               <p className="text-xs text-muted-foreground">
-                {totalLeads > 0 ? Math.round((assignedLeads / totalLeads) * 100) : 0}% assigned
+                {totalLeads > 0 ? Math.round((assignedLeads / totalLeads) * 100) : 0}% of team leads
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">My Tasks</CardTitle>
+              <CardTitle className="text-sm font-medium">Team Tasks</CardTitle>
               <ListTodo className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{tasks.length}</div>
+              <div className="text-2xl font-bold">{teamTasks.length}</div>
               <p className="text-xs text-muted-foreground">
-                {tasks.filter(t => t.status !== 'Done').length} open
+                {openTasks} open
               </p>
             </CardContent>
           </Card>
@@ -190,14 +201,14 @@ export function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
           </Card>
         </div>
 
-        {tasks.length > 0 && (
+        {teamTasks.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>My Tasks</CardTitle>
-              <CardDescription>Your assigned tasks and follow-ups.</CardDescription>
+              <CardTitle>Team Tasks</CardTitle>
+              <CardDescription>All open tasks for your sales executives.</CardDescription>
             </CardHeader>
             <CardContent>
-              <TaskList tasks={tasks} onCall={handleCallClick} onTaskSelect={setSelectedTask} />
+              <TaskList tasks={teamTasks} onCall={handleCallClick} onTaskSelect={setSelectedTask} />
             </CardContent>
           </Card>
         )}
@@ -249,55 +260,6 @@ export function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
           </CardContent>
         </Card>
 
-        {/* Recent Leads */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Leads</CardTitle>
-            <CardDescription>
-              Latest lead generation and assignments
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {leads.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No leads available
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {leads.slice(0, 5).map((lead) => (
-                  <div key={lead.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium">
-                          {lead.first_name[0]}{lead.last_name?.[0]}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium">{lead.first_name} {lead.last_name}</p>
-                        <p className="text-sm text-muted-foreground">{lead.email}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Assigned to: {lead.assigned_to ? (lead.assigned_to as any)?.first_name : 'Unassigned'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Badge variant="outline" className={
-                        lead.status === 'Hot' ? 'bg-red-100 text-red-800' :
-                        lead.status === 'Warm' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-blue-100 text-blue-800'
-                      }>
-                        {lead.status}
-                      </Badge>
-                      <Button size="sm" variant="outline">
-                        Assign
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </>
   );

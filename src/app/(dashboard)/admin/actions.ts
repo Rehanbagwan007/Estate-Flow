@@ -58,7 +58,7 @@ export async function assignLead(propertyInterestId: string, teamMemberId: strin
       .from('agent_assignments')
       .insert({
         property_interest_id: propertyInterestId,
-        agent_id: teamMemberId, // Renamed for clarity in function call
+        agent_id: teamMemberId,
         customer_id: interestUpdate.customer_id,
         assigned_by: user.id,
         status: 'assigned',
@@ -76,27 +76,33 @@ export async function assignLead(propertyInterestId: string, teamMemberId: strin
     
     console.log('Successfully created lead assignment:', assignment.id);
     
+    const taskPayload = {
+        title: `Follow up with ${interestUpdate.profiles.first_name} ${interestUpdate.profiles.last_name}`,
+        description: `Customer is interested in the property: ${interestUpdate.properties.title}. Please contact them.`,
+        assigned_to: teamMemberId,
+        created_by: user.id,
+        status: 'Todo',
+        due_date: taskDueDate,
+        related_customer_id: interestUpdate.customer_id,
+        related_property_id: interestUpdate.property_id,
+        related_assignment_id: assignment.id,
+    };
+
     const { data: newTask, error: taskError } = await supabase
         .from('tasks')
-        .insert({
-            title: `Follow up with ${interestUpdate.profiles.first_name} ${interestUpdate.profiles.last_name}`,
-            description: `Customer is interested in the property: ${interestUpdate.properties.title}. Please contact them.`,
-            assigned_to: teamMemberId,
-            created_by: user.id,
-            status: 'Todo',
-            due_date: taskDueDate,
-            related_customer_id: interestUpdate.customer_id,
-            related_property_id: interestUpdate.property_id,
-            related_assignment_id: assignment.id, // Explicitly link task to the assignment
-        })
+        .insert(taskPayload)
         .select()
         .single();
         
     if (taskError) {
         console.error("Failed to create task:", taskError);
-    } else {
-        console.log('Successfully created task:', newTask.id);
+        // Even if task fails, we don't rollback the whole assignment for now
+        // but we return an error message about the task creation.
+        return { success: false, message: `Lead assigned, but failed to create task: ${taskError.message}` };
     }
+    
+    console.log('Successfully created task:', newTask.id);
+
 
     // --- NOTIFICATION LOGIC ---
     const { data: agentProfile } = await supabase.from('profiles').select('first_name, last_name, phone').eq('id', teamMemberId).single();
@@ -126,5 +132,7 @@ export async function assignLead(propertyInterestId: string, teamMemberId: strin
 
     revalidatePath('/(dashboard)/admin');
     revalidatePath('/(dashboard)/tasks');
+    revalidatePath('/(dashboard)/dashboard');
+
     return { success: true, message: 'Lead has been assigned, task created, and notifications sent.', task: newTask };
 }
