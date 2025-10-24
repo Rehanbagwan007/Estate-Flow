@@ -65,9 +65,8 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
   }, []);
   
   const handleAssignmentSuccess = (interestId: string, assignedTask: Task) => {
-    setPropertyInterests(prev => prev.map(interest => 
-        interest.id === interestId ? { ...interest, status: 'assigned' } : interest
-    ));
+    // Update the local state to remove the newly assigned interest from the pending list
+    setPropertyInterests(prev => prev.filter(interest => interest.id !== interestId));
     setSelectedInterest(null);
   };
   
