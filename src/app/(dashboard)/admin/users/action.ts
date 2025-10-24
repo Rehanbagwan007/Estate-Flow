@@ -45,13 +45,11 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         email: values.email,
         phone: values.phone,
         password: values.password,
-        email_confirm: true, // Auto-confirm email since admin is creating
-        options: {
-            data: {
-                first_name: values.firstName,
-                last_name: values.lastName,
-                role: values.role,
-            },
+        email_confirm: true, // Auto-confirm email
+        user_metadata: {
+            first_name: values.firstName,
+            last_name: values.lastName,
+            role: values.role,
         },
     });
    
