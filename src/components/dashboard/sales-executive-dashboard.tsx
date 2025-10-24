@@ -53,9 +53,9 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
                 leadsResult,
                 tasksResult
             ] = await Promise.all([
-                supabase.from('agent_assignments').select('*, customer:profiles(*)').eq('agent_id', userId),
-                supabase.from('appointments').select('*, customer:profiles(*)').eq('agent_id', userId),
-                supabase.from('call_logs').select('*, customer:profiles(*)').eq('agent_id', userId),
+                supabase.from('agent_assignments').select('*, customer:profiles!agent_assignments_customer_id_fkey(*)').eq('agent_id', userId),
+                supabase.from('appointments').select('*, customer:profiles!appointments_customer_id_fkey(*)').eq('agent_id', userId),
+                supabase.from('call_logs').select('*, customer:profiles!call_logs_customer_id_fkey(*)').eq('agent_id', userId),
                 supabase.from('leads').select('*').eq('assigned_to', userId),
                 supabase.from('tasks')
                     .select(`

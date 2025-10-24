@@ -55,8 +55,8 @@ export function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
         ] = await Promise.all([
             supabase.from('profiles').select('*').in('role', ['sales_executive_1', 'sales_executive_2']),
             supabase.from('leads').select('*, assigned_to:profiles(*)'),
-            supabase.from('agent_assignments').select('*, agent:profiles(*)'),
-            supabase.from('call_logs').select('*, agent:profiles(*)'),
+            supabase.from('agent_assignments').select('*, agent:profiles!agent_assignments_agent_id_fkey(*)'),
+            supabase.from('call_logs').select('*, agent:profiles!call_logs_agent_id_fkey(*)'),
             supabase.from('tasks').select('*, property:related_property_id(*, property_media(file_path)), customer:related_customer_id(*)').eq('assigned_to', userId)
         ]);
 

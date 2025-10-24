@@ -61,7 +61,7 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
             .from('agent_assignments')
             .select(`
                 *, 
-                customer:profiles(*), 
+                customer:profiles!agent_assignments_customer_id_fkey(*), 
                 property_interest:property_interests(
                     *,
                     property:properties(title)
@@ -69,7 +69,7 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
             `)
             .eq('agent_id', userId)
             .order('created_at', { ascending: false }),
-        supabase.from('appointments').select('*, customer:profiles(*)').eq('agent_id', userId),
+        supabase.from('appointments').select('*, customer:profiles!appointments_customer_id_fkey(*)').eq('agent_id', userId),
         supabase.from('call_logs').select('*').eq('agent_id', userId),
         supabase.from('tasks')
           .select(`
