@@ -56,17 +56,19 @@ export function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
         const executiveIds = executives?.map(e => e.id) || [];
         setSalesExecutives(executives || []);
 
-        if (executiveIds.length > 0) {
+        const allTeamIds = [userId, ...executiveIds];
+
+        if (allTeamIds.length > 0) {
             const [
                 leadsResult,
                 assignmentsResult,
                 performanceResult,
                 tasksResult,
             ] = await Promise.all([
-                supabase.from('leads').select('*, assigned_to:profiles(*)').in('assigned_to', executiveIds),
-                supabase.from('agent_assignments').select('*, agent:profiles!agent_assignments_agent_id_fkey(*)').in('agent_id', executiveIds),
-                supabase.from('call_logs').select('*, agent:profiles!call_logs_agent_id_fkey(*)').in('agent_id', executiveIds),
-                supabase.from('tasks').select('*, property:related_property_id(*, property_media(file_path)), customer:related_customer_id(*), assigned_to_profile:assigned_to(*)').in('assigned_to', executiveIds)
+                supabase.from('leads').select('*, assigned_to:profiles(*)').in('assigned_to', allTeamIds),
+                supabase.from('agent_assignments').select('*, agent:profiles!agent_assignments_agent_id_fkey(*)').in('agent_id', allTeamIds),
+                supabase.from('call_logs').select('*, agent:profiles!call_logs_agent_id_fkey(*)').in('agent_id', allTeamIds),
+                supabase.from('tasks').select('*, property:related_property_id(*, property_media(file_path)), customer:related_customer_id(*), assigned_to_profile:assigned_to(*)').in('assigned_to', allTeamIds)
             ]);
             
             setTeamLeads(leadsResult.data || []);
