@@ -33,7 +33,6 @@ export async function assignLead(
 ): Promise<AssignLeadResult> {
     console.log('--- Starting Lead Assignment Transaction ---');
     const supabase = createClient();
-    let newAssignmentId: string | null = null;
 
     try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -88,7 +87,6 @@ export async function assignLead(
             throw new Error(`Failed to create lead assignment: ${assignmentError.message}`);
         }
         console.log('[AssignLead] Successfully created agent assignment:', assignment.id);
-        newAssignmentId = assignment.id; // Store for potential rollback
         
         // 3. Create the associated task for the agent
         const taskPayload = {
@@ -100,7 +98,7 @@ export async function assignLead(
             due_date: taskDueDate,
             related_customer_id: interest.customer_id,
             related_property_id: interest.property_id,
-            related_assignment_id: newAssignmentId, // Link task to assignment
+            related_assignment_id: assignment.id,
         };
 
         const { data: newTask, error: taskError } = await supabase
@@ -111,7 +109,9 @@ export async function assignLead(
             
         if (taskError || !newTask) {
             console.error("[AssignLead] CRITICAL: Failed to create task:", taskError);
-            throw new Error(`Failed to create follow-up task. Error: ${taskError.message}`);
+            // ROLLBACK the assignment if task creation fails
+            await supabase.from('agent_assignments').delete().eq('id', assignment.id);
+            throw new Error(`Failed to create follow-up task, assignment has been rolled back. Error: ${taskError.message}`);
         }
         console.log('[AssignLead] Successfully created task:', newTask.id);
 
@@ -160,13 +160,6 @@ export async function assignLead(
 
     } catch (error: any) {
         console.error("[AssignLead] An error occurred during the transaction:", error.message);
-
-        // --- ROLLBACK LOGIC ---
-        if (newAssignmentId) {
-            console.log(`[AssignLead] Rolling back assignment ${newAssignmentId}...`);
-            await supabase.from('agent_assignments').delete().eq('id', newAssignmentId);
-        }
-
         return { success: false, message: error.message || "An unknown error occurred during lead assignment." };
     }
 }
