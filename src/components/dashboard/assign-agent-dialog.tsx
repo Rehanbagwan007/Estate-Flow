@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { getTeamMembers, assignAgentToInterest } from '@/app/(dashboard)/admin/actions';
+import { getTeamMembers, assignLead } from '@/app/(dashboard)/admin/actions';
 import type { PropertyInterest, Profile, Property, Task } from '@/lib/types';
 import { Loader2, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -70,7 +71,7 @@ export function AssignAgentDialog({ interest, isOpen, onClose, onSuccess }: Assi
     }
 
     startTransition(async () => {
-      const result = await assignAgentToInterest(interest.id, selectedMember, finalDueDate?.toISOString());
+      const result = await assignLead(interest.id, selectedMember, finalDueDate?.toISOString());
       if (result.success && result.task) {
         toast({
           title: 'Success!',
@@ -93,7 +94,7 @@ export function AssignAgentDialog({ interest, isOpen, onClose, onSuccess }: Assi
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Assign Team Member & Create Task</DialogTitle>
+          <DialogTitle>Assign Lead & Create Task</DialogTitle>
           <DialogDescription>
             Assign a team member to follow up on the interest for: <span className="font-semibold">{interest.properties?.title}</span>
           </DialogDescription>
