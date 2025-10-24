@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -47,8 +48,8 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('approval_status', 'pending'),
         supabase.from('properties').select('*'),
-        supabase.from('property_interests').select('*, properties(*), profiles(*)'),
-        supabase.from('appointments').select('*, profiles!appointments_agent_id_fkey(*), profiles!appointments_customer_id_fkey(*)'),
+        supabase.from('property_interests').select('*, properties:property_id(*), profiles:customer_id(*), agent:agent_assignments!property_interest_id(id)'),
+        supabase.from('appointments').select('*, agent:profiles!appointments_agent_id_fkey(*), customer:profiles!appointments_customer_id_fkey(*)'),
       ]);
 
    
@@ -190,7 +191,7 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
                         variant="outline"
                         onClick={() => setSelectedInterest(interest)}
                       >
-                        Assign Agent
+                        Assign Lead
                       </Button>
                     </div>
                   </div>

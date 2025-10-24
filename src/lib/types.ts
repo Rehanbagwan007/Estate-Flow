@@ -1,5 +1,5 @@
 import type { MergeDeep } from 'type-fest';
-import type { Database as Db, Tables } from './supabase-types';
+import type { Database as Db, Tables, Enums } from './supabase-types';
 
 // Override the type for a specific column in a view
 export type Database = MergeDeep<
@@ -35,9 +35,9 @@ export type Database = MergeDeep<
 >;
 
 export type Profile = Tables<'profiles'>;
-export type Property = Tables<'properties'>;
+export type Property = Tables<'properties'> & { property_media?: { file_path: string }[] };
 export type Lead = Tables<'leads'>;
-export type Task = Tables<'tasks'>;
+export type Task = Tables<'tasks'> & { related_customer_id?: string | null; related_assignment_id?: string | null; };
 export type LeadNote = Tables<'lead_notes'>;
 export type PropertyInterest = Tables<'property_interests'>;
 export type Appointment = Tables<'appointments'>;
@@ -46,20 +46,22 @@ export type FieldVisit = Tables<'field_visits'>;
 export type Notification = Tables<'notifications'>;
 export type IntegrationSetting = Tables<'integration_settings'>;
 export type AgentAssignment = Tables<'agent_assignments'>;
+export type PropertyShare = Tables<'property_shares'>;
 
-export type UserRole = Profile['role'];
-export type LeadStatus = Lead['status'];
-export type PropertyStatus = Property['status'];
-export type InterestLevel = PropertyInterest['interest_level'];
-export type InterestStatus = PropertyInterest['status'];
-export type AppointmentStatus = Appointment['status'];
-export type CallStatus = CallLog['call_status'];
-export type CallType = CallLog['call_type'];
-export type VisitType = FieldVisit['visit_type'];
-export type NotificationType = Notification['type'];
-export type NotificationChannel = Notification['sent_via'];
-export type IntegrationType = IntegrationSetting['integration_type'];
-export type AssignmentType = AgentAssignment['assignment_type'];
-export type AssignmentPriority = AgentAssignment['priority'];
-export type AssignmentStatus = AgentAssignment['status'];
-export type PropertyType = Property['property_type'];
+export type UserRole = Enums<'user_role'>;
+export type LeadStatus = Enums<'lead_status'>;
+export type PropertyStatus = Enums<'property_status'>;
+export type InterestLevel = Enums<'interest_level'>;
+export type InterestStatus = Enums<'interest_status'>;
+export type AppointmentStatus = Enums<'appointment_status'>;
+export type CallStatus = Enums<'call_status'>;
+export type CallType = Enums<'call_type'>;
+export type VisitType = Enums<'visit_type'>;
+export type NotificationType = Enums<'notification_type'>;
+export type NotificationChannel = Enums<'notification_channel'>;
+export type IntegrationType = Enums<'integration_type'>;
+export type AssignmentType = Enums<'assignment_type'>;
+export type AssignmentPriority = Enums<'assignment_priority'>;
+export type AssignmentStatus = Enums<'assignment_status'>;
+export type PropertyType = Enums<'property_type'>;
+export type TaskStatus = Enums<'task_status'>;

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { getTeamMembers, assignAgentToInterest } from '@/app/(dashboard)/admin/actions';
+import { getTeamMembers, assignLead } from '@/app/(dashboard)/admin/actions';
 import type { PropertyInterest, Profile, Property, Task } from '@/lib/types';
 import { Loader2, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -27,24 +28,24 @@ interface AssignAgentDialogProps {
   onSuccess: (interestId: string, assignedTask: Task) => void;
 }
 
-const ASSIGNABLE_ROLES = ['admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2'];
+const ASSIGNABLE_ROLES = ['admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2', 'super_admin'];
 
 export function AssignAgentDialog({ interest, isOpen, onClose, onSuccess }: AssignAgentDialogProps) {
-  const [agents, setAgents] = useState<Profile[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<string>('');
+  const [teamMembers, setTeamMembers] = useState<Profile[]>([]);
+  const [selectedMember, setSelectedMember] = useState<string>('');
   const [taskDueDate, setTaskDueDate] = useState<Date | undefined>();
   const [taskDueTime, setTaskDueTime] = useState<string>('');
   
-  const [isFetchingAgents, setIsFetchingAgents] = useState(false);
+  const [isFetchingMembers, setIsFetchingMembers] = useState(false);
   const [isAssigning, startTransition] = useTransition();
   const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
-      setIsFetchingAgents(true);
+      setIsFetchingMembers(true);
       getTeamMembers(ASSIGNABLE_ROLES)
-        .then(setAgents)
-        .finally(() => setIsFetchingAgents(false));
+        .then(setTeamMembers)
+        .finally(() => setIsFetchingMembers(false));
       
       // Pre-fill with customer's preferred time if available
       if (interest?.preferred_meeting_time) {
@@ -60,7 +61,7 @@ export function AssignAgentDialog({ interest, isOpen, onClose, onSuccess }: Assi
   }, [isOpen, interest]);
 
   const handleAssign = () => {
-    if (!selectedAgent || !interest) return;
+    if (!selectedMember || !interest) return;
 
     let finalDueDate: Date | undefined = undefined;
     if (taskDueDate && taskDueTime) {
@@ -71,7 +72,7 @@ export function AssignAgentDialog({ interest, isOpen, onClose, onSuccess }: Assi
     }
 
     startTransition(async () => {
-      const result = await assignAgentToInterest(interest.id, selectedAgent, finalDueDate?.toISOString());
+      const result = await assignLead(interest.id, selectedMember, finalDueDate?.toISOString());
       if (result.success && result.task) {
         toast({
           title: 'Success!',
@@ -95,7 +96,7 @@ export function AssignAgentDialog({ interest, isOpen, onClose, onSuccess }: Assi
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Assign Agent & Create Task</DialogTitle>
+          <DialogTitle>Assign Lead & Create Task</DialogTitle>
           <DialogDescription>
             Assign a team member to follow up on the interest for: <span className="font-semibold">{interest.properties?.title}</span>
           </DialogDescription>
@@ -113,16 +114,16 @@ export function AssignAgentDialog({ interest, isOpen, onClose, onSuccess }: Assi
                 )}
             </div>
           <div className="space-y-2">
-            <Label htmlFor="agent">Select Agent</Label>
-            {isFetchingAgents ? <p>Loading agents...</p> : (
-              <Select onValueChange={setSelectedAgent} value={selectedAgent}>
+            <Label htmlFor="agent">Select Team Member</Label>
+            {isFetchingMembers ? <p>Loading members...</p> : (
+              <Select onValueChange={setSelectedMember} value={selectedMember}>
                 <SelectTrigger id="agent">
-                  <SelectValue placeholder="Select an agent to assign" />
+                  <SelectValue placeholder="Select a team member to assign" />
                 </SelectTrigger>
                 <SelectContent>
-                  {agents.map(agent => (
-                    <SelectItem key={agent.id} value={agent.id}>
-                      {agent.first_name} {agent.last_name} ({agent.role})
+                  {teamMembers.map(member => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.first_name} {member.last_name} ({member.role})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -171,7 +172,7 @@ export function AssignAgentDialog({ interest, isOpen, onClose, onSuccess }: Assi
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isAssigning}>Cancel</Button>
-          <Button onClick={handleAssign} disabled={!selectedAgent || isAssigning}>
+          <Button onClick={handleAssign} disabled={!selectedMember || isAssigning}>
             {isAssigning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Assign Task
           </Button>

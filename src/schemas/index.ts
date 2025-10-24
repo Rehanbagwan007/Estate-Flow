@@ -54,6 +54,6 @@ export const taskSchema = z.object({
   description: z.string().optional(),
   due_date: z.date().optional(),
   assigned_to: z.string().uuid('Please select an agent'),
-  related_lead_id: z.string().uuid().optional().nullable(),
+  related_customer_id: z.string().uuid().optional().nullable(),
   related_property_id: z.string().uuid().optional().nullable(),
 });

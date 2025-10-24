@@ -48,6 +48,7 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
     });
 
     if (authError) {
+        console.log(authError)
         console.error('Error creating user in Auth:', authError.message);
         return { error: `Failed to create user: ${authError.message}` };
     }
@@ -57,26 +58,10 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         return { error: 'User was not created in Auth.' };
     }
     
-    // Step 2: Manually create the profile in public.profiles table.
-    // Set approval_status to 'approved' for everyone since the workflow is removed.
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .insert({
-        id: user.id,
-        first_name: values.firstName,
-        last_name: values.lastName,
-        email: values.email,
-        phone: values.phone,
-        role: values.role,
-        approval_status: 'approved', // All users created by admin are approved by default.
-      });
+    // Step 2: The handle_new_user trigger should have created the profile. We will just wait a moment.
+    // In a production app, you might use a webhook or other method to confirm this.
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    if (profileError) {
-        console.error('Error creating user profile:', profileError);
-        // If profile creation fails, we must delete the auth user to prevent an orphaned account.
-        await supabaseAdmin.auth.admin.deleteUser(user.id);
-        return { error: `User created in auth, but failed to create profile: ${profileError.message}` };
-    }
 
     // Step 3: Send the credentials email using Resend
     try {

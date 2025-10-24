@@ -29,7 +29,7 @@ export class NotificationService {
     if (!this.supabase) {
       this.supabase = createClient();
     }
-    return await this.supabase;
+    return this.supabase;
   }
 
   async createNotification(notification: NotificationData): Promise<boolean> {
@@ -50,6 +50,13 @@ export class NotificationService {
       if (error) {
         console.error('Error creating notification:', error);
         return false;
+      }
+
+      if (notification.send_via === 'whatsapp') {
+          const { data: userProfile } = await supabase.from('profiles').select('phone').eq('id', notification.user_id).single();
+          if (userProfile?.phone) {
+              await whatsappService.sendSimpleMessage(userProfile.phone, `${notification.title}\n\n${notification.message}`);
+          }
       }
 
       return true;

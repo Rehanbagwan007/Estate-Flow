@@ -33,7 +33,7 @@ export function Sidebar({ userRole }: SidebarProps) {
 
   const navItems = [
     // Common items
-    { href: '/', label: 'Dashboard', icon: Home, roles: ['super_admin', 'admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2', 'customer'] },
+    { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['super_admin', 'admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2', 'customer'] },
     
     // Super Admin & Admin
     { href: '/admin/users', label: 'User Management', icon: UserCheck, roles: ['super_admin', 'admin'] },
@@ -49,7 +49,7 @@ export function Sidebar({ userRole }: SidebarProps) {
     
     // Leads (Admin, Agent, Sales roles)
     { href: '/leads', label: 'Leads', icon: Users, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
-    { href: '/leads/new', label: 'Add Lead', icon: Users2, roles: ['super_admin', 'admin', 'agent'] },
+    { href: '/leads/new', label: 'Add Lead', icon: Users2, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
     
     // Tasks (Admin, Agent, Sales roles)
     { href: '/tasks', label: 'Tasks', icon: ListTodo, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
@@ -72,11 +72,13 @@ export function Sidebar({ userRole }: SidebarProps) {
   ];
 
   const isActive = (href: string) => {
-    return href === '/' ? pathname === href : pathname.startsWith(href);
+    // Exact match for dashboard, startsWith for others
+    if (href === '/dashboard') return pathname === href;
+    return pathname.startsWith(href);
   };
 
   return (
-    <div className="hidden border-r bg-card md:block sticky">
+    <div className="hidden border-r bg-card md:block">
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href="/" className="flex items-center gap-2 font-semibold">

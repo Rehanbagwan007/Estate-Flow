@@ -1,183 +1,183 @@
--- supabase/migrations/0002_extend_schema_for_crm.sql
+DO $$
+BEGIN
+    -- Drop all related objects in reverse order of creation to ensure a clean slate
+    -- Drop triggers first
+    DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+    -- Drop functions
+    DROP FUNCTION IF EXISTS public.handle_new_user();
 
-<<<<<<< HEAD
--- 2. Create profiles table
-create table if not exists public.profiles (
-  id uuid not null references auth.users on delete cascade,
-  first_name text,
-  last_name text,
-  email text unique,
-  phone text unique,
-  role public.user_role not null default 'customer',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  primary key (id)
-);
-alter table public.profiles enable row level security;
-create policy "Public profiles are viewable by everyone." on profiles for select using (true);
-create policy "Users can insert their own profile." on profiles for insert with check (auth.uid() = id);
-create policy "Users can update their own profile." on profiles for update using (auth.uid() = id);
-create policy "Admins can update any profile" on profiles for update to authenticated with check (
-  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
-);
+    -- Drop tables, cascading to drop dependent objects like views or foreign keys
+    DROP TABLE IF EXISTS public.integration_settings CASCADE;
+    DROP TABLE IF EXISTS public.notifications CASCADE;
+    DROP TABLE IF EXISTS public.field_visits CASCADE;
+    DROP TABLE IF EXISTS public.call_logs CASCADE;
+    DROP TABLE IF EXISTS public.appointments CASCADE;
+    DROP TABLE IF EXISTS public.property_shares CASCADE;
+    DROP TABLE IF EXISTS public.tasks CASCADE;
+    DROP TABLE IF EXISTS public.agent_assignments CASCADE;
+    DROP TABLE IF EXISTS public.property_interests CASCADE;
+    DROP TABLE IF EXISTS public.lead_notes CASCADE;
 
--- 3. Create properties table
-create table if not exists public.properties (
-  id uuid not null default gen_random_uuid(),
-  title text not null,
-  description text,
-  address text not null,
-  city text not null,
-  state text not null,
-  zip_code text not null,
-  price numeric not null,
-  bedrooms numeric,
-  bathrooms numeric,
-  area_sqft numeric,
-  property_type public.property_type not null default 'Residential',
-  status public.property_status not null default 'Available',
-  owner_name text,
-  owner_contact text,
-  created_by uuid references auth.users(id),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  primary key (id)
-);
-alter table public.properties enable row level security;
-create policy "Properties are viewable by authenticated users." on public.properties for select to authenticated using (true);
-create policy "Agents and admins can create properties." on public.properties for insert with check (
-  (select role from public.profiles where id = auth.uid()) in ('agent', 'admin', 'super_admin')
-);
-create policy "Property creator or admins can update." on public.properties for update using (
-  auth.uid() = created_by or 
-  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
-);
-create policy "Property creator or admins can delete." on public.properties for delete using (
-  auth.uid() = created_by or 
-  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
-);
+    -- Drop all ENUM types to prevent "already exists" errors during recreation
+    DROP TYPE IF EXISTS public.assignment_type;
+    DROP TYPE IF EXISTS public.assignment_status;
+    DROP TYPE IF EXISTS public.assignment_priority;
+    DROP TYPE IF EXISTS public.task_status;
+    DROP TYPE IF EXISTS public.interest_level;
+    DROP TYPE IF EXISTS public.interest_status;
+    DROP TYPE IF EXISTS public.appointment_status;
+    DROP TYPE IF EXISTS public.call_type;
+    DROP TYPE IF EXISTS public.call_status;
+    DROP TYPE IF EXISTS public.visit_type;
+    DROP TYPE IF EXISTS public.notification_type;
+    DROP TYPE IF EXISTS public.notification_channel;
+    DROP TYPE IF EXISTS public.integration_type;
+END$$;
 
--- 4. Create property_media table
-create table if not exists public.property_media (
-  id uuid not null default gen_random_uuid(),
-  property_id uuid references public.properties(id) on delete cascade,
-  file_path text not null,
-  file_type text,
-  created_at timestamptz not null default now(),
-  primary key (id)
-);
-alter table public.property_media enable row level security;
-create policy "Property media is viewable by authenticated users." on public.property_media for select to authenticated using (true);
-create policy "Agents and admins can insert media." on public.property_media for insert with check (
-  (select role from public.profiles where id = auth.uid()) in ('agent', 'admin', 'super_admin')
-);
-create policy "Media creator or admins can update." on public.property_media for update using (
-  exists (select 1 from properties where properties.id = property_id and properties.created_by = auth.uid()) or
-  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
-);
-create policy "Media creator or admins can delete." on public.property_media for delete using (
-  exists (select 1 from properties where properties.id = property_id and properties.created_by = auth.uid()) or
-  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
+
+-- == Create all custom ENUM types correctly ==
+CREATE TYPE public.interest_level AS ENUM ('interested', 'very_interested', 'ready_to_buy');
+CREATE TYPE public.interest_status AS ENUM ('pending', 'assigned', 'contacted', 'meeting_scheduled', 'completed', 'cancelled');
+CREATE TYPE public.assignment_type AS ENUM ('property_interest', 'follow_up', 'cold_call', 'meeting');
+CREATE TYPE public.assignment_status AS ENUM ('assigned', 'accepted', 'in_progress', 'completed', 'cancelled');
+CREATE TYPE public.assignment_priority AS ENUM ('low', 'medium', 'high', 'urgent');
+CREATE TYPE public.task_status AS ENUM ('Todo', 'InProgress', 'Done');
+CREATE TYPE public.appointment_status AS ENUM ('scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show');
+CREATE TYPE public.call_type AS ENUM ('inbound', 'outbound');
+CREATE TYPE public.call_status AS ENUM ('initiated', 'ringing', 'answered', 'completed', 'failed', 'busy', 'no_answer');
+CREATE TYPE public.visit_type AS ENUM ('property_visit', 'customer_meeting', 'site_inspection', 'follow_up');
+CREATE TYPE public.notification_type AS ENUM ('property_interest', 'appointment_reminder', 'call_reminder', 'approval_status', 'task_assigned', 'meeting_scheduled');
+CREATE TYPE public.notification_channel AS ENUM ('app', 'email', 'whatsapp', 'sms');
+CREATE TYPE public.integration_type AS ENUM ('exotel', 'whatsapp', 'olx', '99acres', 'facebook', 'instagram');
+
+-- == Create tables with correct foreign key references ==
+
+-- property_interests
+CREATE TABLE public.property_interests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id UUID NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
+    customer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    interest_level public.interest_level NOT NULL DEFAULT 'interested',
+    status public.interest_status NOT NULL DEFAULT 'pending',
+    message TEXT,
+    preferred_meeting_time TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 5. Create property_interests table
-create table if not exists public.property_interests (
-  id uuid not null default gen_random_uuid(),
-  property_id uuid not null references public.properties(id) on delete cascade,
-  customer_id uuid not null references public.profiles(id) on delete cascade,
-  interest_level public.interest_level not null default 'interested',
-  status public.interest_status not null default 'pending',
-  message text,
-  preferred_meeting_time timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  primary key (id)
-);
-alter table public.property_interests enable row level security;
-create policy "Users can manage their own interests." on public.property_interests for all using (auth.uid() = customer_id);
-create policy "Admins and assigned agents can view interests." on public.property_interests for select using (
-  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin') or
-  exists (select 1 from agent_assignments where agent_assignments.property_interest_id = public.property_interests.id and agent_assignments.agent_id = auth.uid())
-);
-create policy "Admins can update interests." on public.property_interests for update using (
-  (select role from public.profiles where id = auth.uid()) in ('admin', 'super_admin')
-);
-=======
--- Drop existing RLS policies on all relevant tables to ensure a clean slate.
-DROP POLICY IF EXISTS "Allow authenticated users to view profiles" ON public.profiles;
-DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Admins can manage all profiles" ON public.profiles;
-
-DROP POLICY IF EXISTS "Allow authenticated users to read properties" ON public.properties;
-DROP POLICY IF EXISTS "Allow admin and agents to manage properties" ON public.properties;
-
-DROP POLICY IF EXISTS "Customers can manage their own interests" ON public.property_interests;
-DROP POLICY IF EXISTS "Admins and agents can view all interests" ON public.property_interests;
-
-
--- === PROFILES TABLE POLICIES ===
--- 1. Enable RLS for the profiles table
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
--- 2. NEW: Allow any authenticated user to VIEW any profile.
--- (This is the primary fix for the redirect loop and allows the app to function)
-CREATE POLICY "Allow authenticated users to view profiles"
-ON public.profiles FOR SELECT
-TO authenticated
-USING (true);
-
--- 3. NEW: Allow users to update their OWN profile.
-CREATE POLICY "Allow users to update their own profile"
-ON public.profiles FOR UPDATE
-TO authenticated
-USING (auth.uid() = id);
-
--- 4. NEW: Allow admins/super_admins to perform ANY action on profiles.
-CREATE POLICY "Allow admins to manage all profiles"
-ON public.profiles FOR ALL
-TO authenticated
-USING (
-  (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'super_admin')
+-- agent_assignments
+CREATE TABLE public.agent_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_interest_id UUID REFERENCES public.property_interests(id) ON DELETE SET NULL,
+    agent_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    customer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    assigned_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    assignment_type public.assignment_type NOT NULL DEFAULT 'property_interest',
+    status public.assignment_status NOT NULL DEFAULT 'assigned',
+    priority public.assignment_priority NOT NULL DEFAULT 'medium',
+    notes TEXT,
+    due_date TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-
--- === PROPERTIES TABLE POLICIES ===
--- 1. Enable RLS for the properties table
-ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
-
--- 2. NEW: Allow any authenticated user to VIEW properties.
-CREATE POLICY "Allow authenticated users to view properties"
-ON public.properties FOR SELECT
-TO authenticated
-USING (true);
-
--- 3. NEW: Allow admin, super_admin, and agents to MANAGE properties.
-CREATE POLICY "Allow admins and agents to manage properties"
-ON public.properties FOR ALL
-TO authenticated
-USING (
-  (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'super_admin', 'agent')
+-- tasks (Corrected: references public.profiles instead of public.users)
+CREATE TABLE public.tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    description TEXT,
+    status public.task_status NOT NULL DEFAULT 'Todo',
+    due_date TIMESTAMPTZ,
+    assigned_to UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    related_lead_id UUID REFERENCES public.leads(id) ON DELETE SET NULL,
+    related_property_id UUID REFERENCES public.properties(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- lead_notes (Corrected: references public.profiles instead of public.users)
+CREATE TABLE public.lead_notes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES public.leads(id) ON DELETE CASCADE,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    note TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- === PROPERTY_INTERESTS TABLE POLICIES ===
--- 1. Enable RLS for the property_interests table
-ALTER TABLE public.property_interests ENABLE ROW LEVEL SECURITY;
->>>>>>> 2a2cb5be7b204e2fcf4530a65a8b7c337ab406e7
+-- Other tables for full functionality
+CREATE TABLE public.property_shares (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id UUID NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
+    platform TEXT NOT NULL,
+    post_url TEXT,
+    shared_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- 2. NEW: Allow customers to perform ANY action on THEIR OWN interests.
--- (This fixes the SELECT and DELETE issue on the 'My Interests' page)
-CREATE POLICY "Allow customers to manage their own interests"
-ON public.property_interests FOR ALL
-TO authenticated
-USING (auth.uid() = customer_id);
+CREATE TABLE public.appointments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_interest_id UUID NOT NULL REFERENCES public.property_interests(id) ON DELETE CASCADE,
+    customer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    agent_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    scheduled_at TIMESTAMPTZ NOT NULL,
+    duration_minutes INT,
+    location TEXT,
+    notes TEXT,
+    status public.appointment_status NOT NULL DEFAULT 'scheduled',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- 3. NEW: Allow admins, super_admins, and agents to VIEW all interests.
--- (This is necessary for the admin/agent dashboards)
-CREATE POLICY "Allow staff to view all interests"
-ON public.property_interests FOR SELECT
-TO authenticated
-USING (
-  (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'super_admin', 'agent')
+CREATE TABLE public.call_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    call_id TEXT NOT NULL UNIQUE,
+    agent_id UUID NOT NULL REFERENCES public.profiles(id),
+    customer_id UUID NOT NULL REFERENCES public.profiles(id),
+    property_id UUID REFERENCES public.properties(id),
+    call_type public.call_type NOT NULL,
+    call_status public.call_status NOT NULL,
+    duration_seconds INT,
+    recording_url TEXT,
+    recording_duration_seconds INT,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.field_visits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_id UUID NOT NULL REFERENCES public.profiles(id),
+    property_id UUID REFERENCES public.properties(id),
+    visit_date DATE NOT NULL,
+    visit_type public.visit_type NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    address TEXT,
+    duration_minutes INT,
+    notes TEXT,
+    photos TEXT[],
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    type public.notification_type NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    data JSONB,
+    sent_via public.notification_channel NOT NULL DEFAULT 'app',
+    sent_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.integration_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    integration_type public.integration_type NOT NULL UNIQUE,
+    settings JSONB NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by UUID REFERENCES public.profiles(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

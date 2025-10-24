@@ -1,8 +1,10 @@
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { Task } from '@/lib/types';
+import { notificationService } from '@/lib/notifications/notification-service';
 
 export async function getTeamMembers(roles: string[]) {
   const supabase = createClient();
@@ -18,10 +20,10 @@ export async function getTeamMembers(roles: string[]) {
   return data;
 }
 
-export async function assignAgentToInterest(propertyInterestId: string, agentId: string, taskDueDate?: string): Promise<{ success: boolean; message: string; task?: Task | null }> {
-    console.log('--- Starting Agent Assignment ---');
+export async function assignLead(propertyInterestId: string, teamMemberId: string, taskDueDate?: string): Promise<{ success: boolean; message: string; task?: Task | null }> {
+    console.log('--- Starting Lead Assignment ---');
     console.log('Property Interest ID:', propertyInterestId);
-    console.log('Agent ID to assign:', agentId);
+    console.log('Team Member ID to assign:', teamMemberId);
     console.log('Task Due Date:', taskDueDate);
 
     const supabase = createClient();
@@ -40,14 +42,14 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
       .eq('id', propertyInterestId)
       .select(`
         *,
-        properties(title),
-        profiles(first_name, last_name, phone)
+        properties:property_id(title, price),
+        profiles:customer_id(first_name, last_name, phone)
       `)
       .single();
 
     if (updateError || !interestUpdate) {
         console.error("Failed to update interest status:", updateError);
-        return { success: false, message: 'Failed to update interest status.' };
+        return { success: false, message: `Failed to update interest status: ${updateError?.message}` };
     }
 
     console.log('Successfully updated property interest. Customer ID:', interestUpdate.customer_id);
@@ -56,7 +58,7 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
       .from('agent_assignments')
       .insert({
         property_interest_id: propertyInterestId,
-        agent_id: agentId,
+        agent_id: teamMemberId, // Renamed for clarity in function call
         customer_id: interestUpdate.customer_id,
         assigned_by: user.id,
         status: 'assigned',
@@ -68,43 +70,61 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
   
     if (assignmentError) {
         console.error("Failed to create assignment:", assignmentError);
-        // Optionally revert the status update
         await supabase.from('property_interests').update({ status: 'pending' }).eq('id', propertyInterestId);
-        return { success: false, message: 'Failed to create agent assignment.' };
+        return { success: false, message: `Failed to create lead assignment: ${assignmentError.message}` };
     }
     
-    console.log('Successfully created agent assignment:', assignment.id);
+    console.log('Successfully created lead assignment:', assignment.id);
     
-    // Create a task for the assigned agent
     const { data: newTask, error: taskError } = await supabase
         .from('tasks')
         .insert({
             title: `Follow up with ${interestUpdate.profiles.first_name} ${interestUpdate.profiles.last_name}`,
             description: `Customer is interested in the property: ${interestUpdate.properties.title}. Please contact them.`,
-            assigned_to: agentId,
+            assigned_to: teamMemberId,
             created_by: user.id,
             status: 'Todo',
             due_date: taskDueDate,
-            related_lead_id: null, // This is an interest, not a formal lead yet
+            related_customer_id: interestUpdate.customer_id,
             related_property_id: interestUpdate.property_id,
+            related_assignment_id: assignment.id, // Explicitly link task to the assignment
         })
         .select()
         .single();
         
     if (taskError) {
         console.error("Failed to create task:", taskError);
-        // This is not a critical failure, so we'll just log it and continue.
-        // In a real-world app, you might want more robust error handling here.
     } else {
         console.log('Successfully created task:', newTask.id);
     }
 
+    // --- NOTIFICATION LOGIC ---
+    const { data: agentProfile } = await supabase.from('profiles').select('first_name, last_name, phone').eq('id', teamMemberId).single();
+    
+    if (agentProfile && interestUpdate.profiles?.phone && interestUpdate.preferred_meeting_time) {
+        // Notify customer
+        notificationService.sendPropertyInterestNotification(
+            interestUpdate.customer_id,
+            interestUpdate.properties?.title ?? 'the property',
+            interestUpdate.properties?.price ?? 0,
+            `${agentProfile.first_name} ${agentProfile.last_name}`,
+            interestUpdate.preferred_meeting_time
+        );
 
-    console.log('--- Agent Assignment and Task Creation Successful ---');
+        // Notify agent
+        notificationService.createNotification({
+            user_id: teamMemberId,
+            type: 'task_assigned',
+            title: 'New Customer Assignment',
+            message: `You have a new task to follow up with ${interestUpdate.profiles.first_name} regarding ${interestUpdate.properties.title}.`,
+            data: { taskId: newTask?.id, customerName: `${interestUpdate.profiles.first_name} ${interestUpdate.profiles.last_name}` },
+            send_via: 'whatsapp' // Also send a whatsapp to the agent
+        });
+    }
 
-    // TODO: Trigger WhatsApp notification here in a real scenario
+    console.log('--- Lead Assignment and Task Creation Successful ---');
 
     revalidatePath('/(dashboard)/admin');
     revalidatePath('/(dashboard)/tasks');
-    return { success: true, message: 'Agent has been assigned and task has been created.', task: newTask };
+    return { success: true, message: 'Lead has been assigned, task created, and notifications sent.', task: newTask };
 }

@@ -4,9 +4,12 @@
 interface WhatsAppMessage {
   to: string;
   type: 'text' | 'template';
-  content: string;
-  templateName?: string;
-  templateParams?: Record<string, string>;
+  content?: string;
+  template?: {
+    name: string;
+    language: { code: string };
+    components: any[];
+  }
 }
 
 interface WhatsAppNotificationData {
@@ -32,10 +35,14 @@ export class WhatsAppService {
   private static instance: WhatsAppService;
   private apiUrl: string;
   private accessToken: string;
+  private phoneNumberId: string;
+  private isConfigured: boolean;
 
   constructor() {
     this.apiUrl = process.env.WHATSAPP_API_URL || 'https://graph.facebook.com/v18.0';
     this.accessToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
+    this.phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+    this.isConfigured = !!(this.accessToken && this.phoneNumberId && this.apiUrl.startsWith('https'));
   }
 
   static getInstance(): WhatsAppService {
@@ -46,17 +53,48 @@ export class WhatsAppService {
   }
 
   async sendMessage(message: WhatsAppMessage): Promise<boolean> {
+    if (!this.isConfigured) {
+      console.log('WhatsApp Service is not configured. Simulating message sending. Please set WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, and WHATSAPP_API_URL environment variables.');
+      console.log('Simulated WhatsApp message:', message);
+      return this.simulateWhatsAppAPI(message);
+    }
+    
     try {
-      // In production, this would make an actual API call to Meta WhatsApp Business API
-      console.log('WhatsApp message would be sent:', message);
-      
-      // Simulate API call
-      const response = await this.simulateWhatsAppAPI(message);
-      return response.success;
+      const response = await fetch(`${this.apiUrl}/${this.phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: this.formatPhoneNumber(message.to),
+          type: message.type,
+          text: message.type === 'text' ? { body: message.content } : undefined,
+          template: message.type === 'template' ? message.template : undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error sending WhatsApp message:', errorData);
+        return false;
+      }
+
+      console.log('WhatsApp message sent successfully.');
+      return true;
     } catch (error) {
       console.error('Error sending WhatsApp message:', error);
       return false;
     }
+  }
+  
+  async sendSimpleMessage(phoneNumber: string, message: string): Promise<boolean> {
+    return this.sendMessage({
+      to: phoneNumber,
+      type: 'text',
+      content: message,
+    });
   }
 
   async sendPropertyInterestNotification(
@@ -77,11 +115,7 @@ We'll send you a reminder 30 minutes before your meeting. If you need to resched
 
 Thank you for choosing EstateFlow!`;
 
-    return this.sendMessage({
-      to: phoneNumber,
-      type: 'text',
-      content: message
-    });
+    return this.sendSimpleMessage(phoneNumber, message);
   }
 
   async sendAppointmentReminder(
@@ -103,11 +137,7 @@ Please be ready for the meeting. If you need to reschedule, contact us immediate
 
 See you soon!`;
 
-    return this.sendMessage({
-      to: phoneNumber,
-      type: 'text',
-      content: message
-    });
+    return this.sendSimpleMessage(phoneNumber, message);
   }
 
   async sendApprovalNotification(
@@ -136,11 +166,7 @@ ${data.reason ? `Reason: ${data.reason}` : ''}
 
 Please contact our support team for more information.`;
 
-    return this.sendMessage({
-      to: phoneNumber,
-      type: 'text',
-      content: message
-    });
+    return this.sendSimpleMessage(phoneNumber, message);
   }
 
   async sendMeetingConfirmation(
@@ -162,11 +188,7 @@ We'll send you a reminder 30 minutes before the meeting. Please arrive on time.
 
 Looking forward to showing you this property!`;
 
-    return this.sendMessage({
-      to: phoneNumber,
-      type: 'text',
-      content: message
-    });
+    return this.sendSimpleMessage(phoneNumber, message);
   }
 
   private async simulateWhatsAppAPI(message: WhatsAppMessage): Promise<{ success: boolean }> {
@@ -177,10 +199,10 @@ Looking forward to showing you this property!`;
     const isSuccess = Math.random() > 0.05;
 
     if (isSuccess) {
-      console.log(`✅ WhatsApp message sent to ${message.to}`);
+      console.log(`✅ Simulated WhatsApp message sent to ${message.to}`);
       return { success: true };
     } else {
-      console.log(`❌ Failed to send WhatsApp message to ${message.to}`);
+      console.log(`❌ Failed to simulate sending WhatsApp message to ${message.to}`);
       return { success: false };
     }
   }
