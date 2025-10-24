@@ -16,7 +16,6 @@ const createAdminClient = () => {
         throw new Error('Supabase URL or service role key is missing. Make sure SUPABASE_SERVICE_ROLE_KEY is set in your environment variables.');
     }
     
-    // Correctly initialize the admin client for server-side operations
     return createSupabaseClient(supabaseUrl, serviceKey, {
       auth: {
         autoRefreshToken: false,
@@ -34,35 +33,24 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
     }
 
     const resendApiKey = process.env.RESEND_API_KEY;
-
     if (!resendApiKey) {
         return { error: 'Resend API key is missing. Cannot send emails.' };
     }
-
     const resend = new Resend(resendApiKey);
 
     // Step 1: Create the user in Supabase Auth
-    // The phone number is removed from here to avoid the `unexpected_failure` error.
-    // It will be added to the profiles table by the `handle_new_user` trigger.
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: values.email,
         password: values.password,
-        email_confirm: true, // Auto-confirm email since admin is creating
+        email_confirm: true,
         user_metadata: {
-            first_name: values.firstName,
-            last_name: values.lastName,
-            role: values.role,
-            phone: values.phone
+            role: values.role, // Pass role for trigger if it's still active
         },
     });
 
     if (authError) {
         console.error('Error creating user in Auth:', authError);
-        // Provide a more specific error message if the key is likely the issue.
-        if (authError.message.includes('service_role key') || authError.code === 'unexpected_failure') {
-            return { error: 'Failed to create user due to a server configuration issue. Please ensure your SUPABASE_SERVICE_ROLE_KEY is correct and valid for your project.' };
-        }
-        return { error: `Failed to create user: ${authError.message}` };
+        return { error: `Failed to create auth user: ${authError.message}` };
     }
 
     const user = authData.user;
@@ -70,9 +58,25 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         return { error: 'User was not created in Auth.' };
     }
     
-    // Step 2: The handle_new_user trigger should have created the profile. We will just wait a moment.
-    // In a production app, you might use a webhook or other method to confirm this.
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Step 2: Explicitly insert into profiles table using the admin client.
+    // This bypasses RLS and is more reliable than the trigger.
+    const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+            id: user.id,
+            first_name: values.firstName,
+            last_name: values.lastName,
+            email: values.email,
+            phone: values.phone,
+            role: values.role,
+        });
+
+    if (profileError) {
+        console.error('Error creating user profile:', profileError);
+        // If profile creation fails, we should delete the auth user to avoid orphans
+        await supabaseAdmin.auth.admin.deleteUser(user.id);
+        return { error: `Failed to create user profile: ${profileError.message}` };
+    }
 
 
     // Step 3: Send the credentials email using Resend
@@ -89,7 +93,6 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         });
     } catch (emailError) {
         console.error('Email sending error:', emailError);
-        // Even if the email fails, we don't want to block the user creation.
         return { data: user, message: 'User was created, but the credential email could not be sent.' };
     }
     
@@ -101,8 +104,6 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
 export async function updateUserRole(userId: string, role: z.infer<typeof signupSchema>['role']) {
     const supabaseAdmin = createAdminClient();
   
-    // The role is stored in the profiles table, not the auth metadata.
-    // We only need to update the profile table.
     const { data, error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({ role: role })
