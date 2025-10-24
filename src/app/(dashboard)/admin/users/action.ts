@@ -13,7 +13,7 @@ const createAdminClient = () => {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceKey) {
-        throw new Error('Supabase URL or service role key is missing.');
+        throw new Error('Supabase URL or service role key is missing. Make sure SUPABASE_SERVICE_ROLE_KEY is set in your environment variables.');
     }
     
     return createSupabaseClient(supabaseUrl, serviceKey, {
@@ -25,7 +25,13 @@ const createAdminClient = () => {
 };
 
 export async function createUser(values: z.infer<typeof signupSchema>) {
-    const supabaseAdmin = createAdminClient();
+    let supabaseAdmin;
+    try {
+        supabaseAdmin = createAdminClient();
+    } catch (e: any) {
+        return { error: e.message };
+    }
+
     const resendApiKey = process.env.RESEND_API_KEY;
 
     if (!resendApiKey) {
@@ -48,8 +54,13 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
     });
 
     if (authError) {
-        console.log(authError)
-        console.error('Error creating user in Auth:', authError.message);
+
+        console.error('Error creating user in Auth:', authError);
+        // Provide a more specific error message if the key is likely the issue.
+        if (authError.message.includes('service_role key') || authError.code === 'unexpected_failure') {
+            return { error: 'Failed to create user due to a server configuration issue. Please ensure your SUPABASE_SERVICE_ROLE_KEY is correct and valid for your project.' };
+        }
+
         return { error: `Failed to create user: ${authError.message}` };
     }
 
