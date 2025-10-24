@@ -89,7 +89,6 @@ export async function assignLead(
         due_date: taskDueDate,
         related_customer_id: interest.customer_id,
         related_property_id: interest.property_id,
-        related_assignment_id: assignment.id,
     };
 
     const { data: newTask, error: taskError } = await supabase
