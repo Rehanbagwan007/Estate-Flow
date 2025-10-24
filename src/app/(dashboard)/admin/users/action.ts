@@ -16,10 +16,12 @@ const createAdminClient = () => {
         throw new Error('Supabase URL or service role key is missing. Make sure SUPABASE_SERVICE_ROLE_KEY is set in your environment variables.');
     }
     
+    // Explicitly specify auth options to use the service_role key
     return createSupabaseClient(supabaseUrl, serviceKey, {
       auth: {
         autoRefreshToken: false,
-        persistSession: false
+        persistSession: false,
+        detectSessionInUrl: false
       }
     });
 };
@@ -46,12 +48,10 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
         phone: values.phone,
         password: values.password,
         email_confirm: true, // Auto-confirm email since admin is creating
-        options: {
-            data: {
-                first_name: values.firstName,
-                last_name: values.lastName,
-                role: values.role,
-            },
+        user_metadata: {
+            first_name: values.firstName,
+            last_name: values.lastName,
+            role: values.role,
         },
     });
 
