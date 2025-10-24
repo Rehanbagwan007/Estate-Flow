@@ -84,8 +84,9 @@ export async function assignAgentToInterest(propertyInterestId: string, agentId:
             created_by: user.id,
             status: 'Todo',
             due_date: taskDueDate,
-            related_customer_id: interestUpdate.customer_id, // Correctly linking the customer
+            related_customer_id: interestUpdate.customer_id,
             related_property_id: interestUpdate.property_id,
+            related_assignment_id: assignment.id, // Explicitly link task to the assignment
         })
         .select()
         .single();
