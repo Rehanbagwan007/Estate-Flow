@@ -33,6 +33,8 @@ export async function AgentDashboard({ userId }: AgentDashboardProps) {
     supabase.from('properties').select('*').eq('created_by', userId)
   ]);
 
+  console.log(myAssignmentsResult)
+
   const myAssignments = myAssignmentsResult.data || [];
   const myAppointments = myAppointmentsResult.data || [];
   const myCallLogs = myCallLogsResult.data || [];

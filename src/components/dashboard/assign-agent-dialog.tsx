@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { error } from 'console';
 
 interface EnrichedInterest extends PropertyInterest {
     properties: Property | null;
@@ -77,7 +78,8 @@ export function AssignAgentDialog({ interest, isOpen, onClose, onSuccess }: Assi
           description: result.message,
         });
         onSuccess(interest.id, result.task);
-      } else {
+      } else(error:any)=>{
+        console.log(error)
         toast({
           title: 'Error',
           description: result.message,
