@@ -16,6 +16,7 @@ const createAdminClient = () => {
         throw new Error('Supabase URL or service role key is missing. Make sure SUPABASE_SERVICE_ROLE_KEY is set in your environment variables.');
     }
     
+    // Correctly initialize the admin client for server-side operations
     return createSupabaseClient(supabaseUrl, serviceKey, {
       auth: {
         autoRefreshToken: false,
@@ -38,13 +39,13 @@ export async function createUser(values: z.infer<typeof signupSchema>) {
     }
     const resend = new Resend(resendApiKey);
 
-    // Step 1: Create the user in Supabase Auth
+    // Step 1: Create the user in Supabase Auth with a minimal payload
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: values.email,
         password: values.password,
         email_confirm: true,
         user_metadata: {
-            role: values.role, // Pass role for trigger if it's still active
+            role: values.role,
         },
     });
 
@@ -124,6 +125,8 @@ export async function updateUserRole(userId: string, role: z.infer<typeof signup
 export async function deleteUser(userId: string) {
     const supabaseAdmin = createAdminClient();
 
+    // The database is configured with a cascade delete.
+    // Deleting the auth user will automatically delete the corresponding profile.
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (error) {
