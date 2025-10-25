@@ -154,7 +154,7 @@ export type Database = {
           call_status: Database["public"]["Enums"]["call_status"]
           call_type: Database["public"]["Enums"]["call_type"]
           created_at: string
-          customer_id: string
+          customer_id: string | null
           duration_seconds: number | null
           id: string
           notes: string | null
@@ -169,7 +169,7 @@ export type Database = {
           call_status?: Database["public"]["Enums"]["call_status"]
           call_type?: Database["public"]["Enums"]["call_type"]
           created_at?: string
-          customer_id: string
+          customer_id?: string | null
           duration_seconds?: number | null
           id?: string
           notes?: string | null
@@ -184,7 +184,7 @@ export type Database = {
           call_status?: Database["public"]["Enums"]["call_status"]
           call_type?: Database["public"]["Enums"]["call_type"]
           created_at?: string
-          customer_id?: string
+          customer_id?: string | null
           duration_seconds?: number | null
           id?: string
           notes?: string | null
@@ -1121,5 +1121,7 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
+
+    
 
     

@@ -78,3 +78,5 @@ export type JobReportStatus = Enums<'job_report_status'>;
 export type TaskType = 'Follow-up' | 'Call' | 'Site Visit' | 'Meeting';
 
     
+
+    

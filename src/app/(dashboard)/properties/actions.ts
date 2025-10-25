@@ -185,7 +185,7 @@ export async function saveProperty(
                   });
               } else if (result.status === 'fulfilled' && !result.value.success) {
                   console.error(`❌ ${result.value.platform} Failed: ${result.value.error}`);
-              } else {
+              } else if (result.status === 'rejected') {
                   console.error(`❌ Sharing Failed Hard:`, result.reason);
               }
           }
@@ -218,3 +218,5 @@ export async function saveProperty(
     message: propertyId ? 'Property updated successfully!' : 'Property created and sharing has started!',
   };
 }
+
+    
