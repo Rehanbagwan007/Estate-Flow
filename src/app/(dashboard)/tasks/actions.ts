@@ -67,7 +67,9 @@ export async function createTask(
 
         if (uploadError) {
           console.error('Upload Error:', uploadError.message);
-          continue;
+          // Even if one file fails, we can try to continue with others.
+          // In a real-world app, you might want more robust error handling or a transaction.
+          continue; 
         }
         
         const { data: urlData } = supabase.storage

@@ -63,6 +63,14 @@ export function TasksClient({ initialTasks, userRole, userId }: TasksClientProps
     setCallTarget(null);
   };
 
+  const handleTaskUpdate = () => {
+    // This function will be called when a task is updated in the dialog
+    // We can re-fetch the tasks here or update the state locally
+    // For now, let's close the dialog, which triggers a re-render
+    // on the page if the revalidation works as expected.
+    setSelectedTask(null);
+  };
+
   return (
     <>
       <TaskDetailsDialog
@@ -70,6 +78,7 @@ export function TasksClient({ initialTasks, userRole, userId }: TasksClientProps
         isOpen={!!selectedTask}
         onClose={() => setSelectedTask(null)}
         onCall={handleCallClick}
+        onUpdate={handleTaskUpdate}
       />
       {callTarget && (
         <ExotelCallInterface 

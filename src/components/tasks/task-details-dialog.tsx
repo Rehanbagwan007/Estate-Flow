@@ -24,9 +24,10 @@ interface TaskDetailsDialogProps {
     isOpen: boolean;
     onClose: () => void;
     onCall: (target: { customerId: string; customerPhone: string; customerName: string }) => void;
+    onUpdate: () => void;
 }
 
-export function TaskDetailsDialog({ task, isOpen, onClose, onCall }: TaskDetailsDialogProps) {
+export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: TaskDetailsDialogProps) {
     const { toast } = useToast();
     const [isUpdating, startTransition] = useTransition();
 
@@ -48,7 +49,8 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall }: TaskDetails
             const result = await updateTaskStatus(task.id, newStatus);
             if (result.success) {
                 toast({ title: 'Success', description: 'Task status updated.' });
-                onClose(); // This will trigger a re-fetch on the main page
+                onUpdate();
+                onClose();
             } else {
                 toast({ title: 'Error', description: result.error, variant: 'destructive' });
             }
