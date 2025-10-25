@@ -16,7 +16,8 @@ import {
   Award,
   Building,
   UserCheck,
-  Bell
+  Bell,
+  FileText
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Logo } from '@/components/icons/logo';
@@ -34,6 +35,7 @@ export function Sidebar({ userRole }: SidebarProps) {
   const navItems = [
     // Common items
     { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['super_admin', 'admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2', 'customer'] },
+    { href: '/job-reports', label: 'Job Reports', icon: FileText, roles: ['super_admin', 'admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
     
     // Super Admin & Admin
     { href: '/admin/users', label: 'User Management', icon: UserCheck, roles: ['super_admin', 'admin'] },

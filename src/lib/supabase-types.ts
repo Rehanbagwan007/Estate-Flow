@@ -315,6 +315,60 @@ export type Database = {
           },
         ]
       }
+      job_reports: {
+        Row: {
+          id: string
+          user_id: string
+          report_to: string | null
+          report_date: string
+          details: string
+          travel_distance_km: number | null
+          site_visits: number | null
+          status: Database["public"]["Enums"]["job_report_status"]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          report_to?: string | null
+          report_date?: string
+          details: string
+          travel_distance_km?: number | null
+          site_visits?: number | null
+          status?: Database["public"]["Enums"]["job_report_status"]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          report_to?: string | null
+          report_date?: string
+          details?: string
+          travel_distance_km?: number | null
+          site_visits?: number | null
+          status?: Database["public"]["Enums"]["job_report_status"]
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_reports_report_to_fkey"
+            columns: ["report_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       lead_notes: {
         Row: {
           created_at: string
@@ -757,6 +811,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_tasks_related_assignment_id"
+            columns: ["related_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "agent_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_tasks_related_customer_id"
+            columns: ["related_customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tasks_assigned_to_fkey"
             columns: ["assigned_to"]
             isOneToOne: false
@@ -766,20 +834,6 @@ export type Database = {
           {
             foreignKeyName: "tasks_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_related_assignment_id_fkey"
-            columns: ["related_assignment_id"]
-            isOneToOne: false
-            referencedRelation: "agent_assignments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_related_customer_id_fkey"
-            columns: ["related_customer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -860,6 +914,7 @@ export type Database = {
         | "meeting_scheduled"
         | "completed"
         | "cancelled"
+      job_report_status: "submitted" | "approved" | "rejected"
       lead_status: "Hot" | "Warm" | "Cold"
       notification_channel: "app" | "email" | "whatsapp" | "sms"
       notification_type:
