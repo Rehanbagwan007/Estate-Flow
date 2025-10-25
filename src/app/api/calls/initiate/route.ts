@@ -36,6 +36,8 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
+      console.log(callLog)
+
     if (error) {
       console.error('Error creating call log:', error);
       return NextResponse.json({ error: 'Failed to create call log' }, { status: 500 });
