@@ -48,6 +48,7 @@ export type IntegrationSetting = Tables<'integration_settings'>;
 export type AgentAssignment = Tables<'agent_assignments'>;
 export type PropertyShare = Tables<'property_shares'>;
 export type JobReport = Tables<'job_reports'>;
+export type JobReportMedia = Tables<'job_report_media'>;
 
 export type UserRole = Enums<'user_role'>;
 export type LeadStatus = Enums<'lead_status'>;

@@ -324,6 +324,7 @@ export type Database = {
           details: string
           travel_distance_km: number | null
           site_visits: number | null
+          site_visit_locations: string | null
           status: Database["public"]["Enums"]["job_report_status"]
           created_at: string
           updated_at: string
@@ -336,6 +337,7 @@ export type Database = {
           details: string
           travel_distance_km?: number | null
           site_visits?: number | null
+          site_visit_locations?: string | null
           status?: Database["public"]["Enums"]["job_report_status"]
           created_at?: string
           updated_at?: string
@@ -348,6 +350,7 @@ export type Database = {
           details?: string
           travel_distance_km?: number | null
           site_visits?: number | null
+          site_visit_locations?: string | null
           status?: Database["public"]["Enums"]["job_report_status"]
           created_at?: string
           updated_at?: string
@@ -365,6 +368,38 @@ export type Database = {
             columns: ["report_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      job_report_media: {
+        Row: {
+          id: string
+          report_id: string
+          file_path: string
+          file_type: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          report_id: string
+          file_path: string
+          file_type?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          report_id?: string
+          file_path?: string
+          file_type?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_report_media_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "job_reports"
             referencedColumns: ["id"]
           }
         ]
