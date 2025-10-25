@@ -43,5 +43,5 @@ export default async function TasksPage() {
 
     const tasks = await getTasksForUser(user.id, profile.role);
     
-    return <TasksClient initialTasks={tasks} userRole={profile.role} />;
+    return <TasksClient initialTasks={tasks} userRole={profile.role} userId={user.id} />;
 }
