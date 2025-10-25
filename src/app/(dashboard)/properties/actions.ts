@@ -1,3 +1,4 @@
+
 'use server';
 
 import { z } from 'zod';
@@ -15,56 +16,51 @@ interface MediaUploadResult {
   postUrl?: string; // Will hold the URL of the created post
 }
 
-// A helper to fetch the first image URL associated with a property
-async function getFirstPropertyImage(supabase: any, propertyId: string): Promise<string | null> {
+// A helper to fetch all image URLs associated with a property
+async function getPropertyImageUrls(supabase: any, propertyId: string): Promise<string[] | null> {
     const { data, error } = await supabase
         .from('property_media')
         .select('file_path')
         .eq('property_id', propertyId)
-        .ilike('file_type', 'image/%')
-        .limit(1)
-        .single();
+        .ilike('file_type', 'image/%');
 
     if (error || !data) {
-        console.error('Could not fetch property image:', error?.message);
+        console.error('Could not fetch property images:', error?.message);
         return null;
     }
-    return data.file_path;
+    return data.map(image => image.file_path);
 }
 
 
 // --- API Integration Functions (Placeholders) ---
 
-async function shareTo99acres(property: Property): Promise<MediaUploadResult> {
-  console.log('Attempting to share to 99acres...', property.title);
-  // The real API response should give you a URL to the new listing.
+async function shareTo99acres(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
+  console.log(`Attempting to share to 99acres with ${imageUrls?.length || 0} images...`, property.title);
   const listingUrl = `https://www.99acres.com/property-in-${property.city.toLowerCase()}-${property.id}`;
   return { success: true, platform: '99acres', postUrl: listingUrl };
 }
 
-async function shareToOlx(property: Property): Promise<MediaUploadResult> {
-  console.log('Attempting to share to OLX...', property.title);
+async function shareToOlx(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
+  console.log(`Attempting to share to OLX with ${imageUrls?.length || 0} images...`, property.title);
   const listingUrl = `https://www.olx.in/item/${property.title.toLowerCase().replace(/\s+/g, '-')}-iid-12345${property.id}`;
   return { success: true, platform: 'OLX', postUrl: listingUrl };
 }
 
-async function postToInstagram(property: Property, imageUrl: string | null): Promise<MediaUploadResult> {
-  console.log('Attempting to post to Instagram...', property.title);
-  if (!imageUrl) {
-    return { success: false, platform: 'Instagram', error: 'An image is required.' };
+async function postToInstagram(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
+  console.log(`Attempting to post to Instagram with ${imageUrls?.length || 0} images...`, property.title);
+  if (!imageUrls || imageUrls.length === 0) {
+    return { success: false, platform: 'Instagram', error: 'At least one image is required for Instagram.' };
   }
-  // After a successful post, the API returns an ID. The permalink needs to be fetched or constructed.
   const postId = `Cq_Z_${Math.random().toString(36).substring(2, 10)}`;
   const postUrl = `https://www.instagram.com/p/${postId}/`;
   return { success: true, platform: 'Instagram', postUrl };
 }
 
-async function postToFacebook(property: Property, imageUrl: string | null): Promise<MediaUploadResult> {
-    console.log('Attempting to post to Facebook...', property.title);
-    if (!imageUrl) {
-        return { success: false, platform: 'Facebook', error: 'An image is required.' };
+async function postToFacebook(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
+    console.log(`Attempting to post to Facebook with ${imageUrls?.length || 0} images...`, property.title);
+    if (!imageUrls || imageUrls.length === 0) {
+        return { success: false, platform: 'Facebook', error: 'At least one image is required for Facebook.' };
     }
-    // The API response returns an ID in the format `pageId_postId`.
     const pageId = process.env.FACEBOOK_PAGE_ID || '1234567890';
     const postId = `8765432109`;
     const postUrl = `https://www.facebook.com/${pageId}/posts/${postId}`;
@@ -86,9 +82,16 @@ export async function saveProperty(
     return { message: 'Authentication required.' };
   }
 
-  const validatedFields = propertySchema.safeParse(
-    Object.fromEntries(formData.entries())
-  );
+  const rawData = Object.fromEntries(formData.entries());
+  
+  // Handle numeric conversions explicitly for validation
+  const validatedFields = propertySchema.safeParse({
+    ...rawData,
+    price: rawData.price ? Number(rawData.price) : undefined,
+    bedrooms: rawData.bedrooms ? Number(rawData.bedrooms) : undefined,
+    bathrooms: rawData.bathrooms ? Number(rawData.bathrooms) : undefined,
+    area_sqft: rawData.area_sqft ? Number(rawData.area_sqft) : undefined,
+  });
 
   if (!validatedFields.success) {
     return {
@@ -161,13 +164,13 @@ export async function saveProperty(
     if (!propertyId && savedProperty && platformsToShare.length > 0) {
       console.log(`Property created. Sharing to: ${platformsToShare.join(', ')}`);
       
-      const firstImageUrl = await getFirstPropertyImage(supabase, savedProperty.id);
+      const imageUrls = await getPropertyImageUrls(supabase, savedProperty.id);
       const sharingPromises: Promise<MediaUploadResult>[] = [];
 
-      if (platformsToShare.includes('99acres')) sharingPromises.push(shareTo99acres(savedProperty));
-      if (platformsToShare.includes('olx')) sharingPromises.push(shareToOlx(savedProperty));
-      if (platformsToShare.includes('instagram')) sharingPromises.push(postToInstagram(savedProperty, firstImageUrl));
-      if (platformsToShare.includes('facebook')) sharingPromises.push(postToFacebook(savedProperty, firstImageUrl));
+      if (platformsToShare.includes('99acres')) sharingPromises.push(shareTo99acres(savedProperty, imageUrls));
+      if (platformsToShare.includes('olx')) sharingPromises.push(shareToOlx(savedProperty, imageUrls));
+      if (platformsToShare.includes('instagram')) sharingPromises.push(postToInstagram(savedProperty, imageUrls));
+      if (platformsToShare.includes('facebook')) sharingPromises.push(postToFacebook(savedProperty, imageUrls));
       
       // Process results in the background
       Promise.allSettled(sharingPromises).then(async (results) => {
