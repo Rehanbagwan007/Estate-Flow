@@ -90,7 +90,7 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
                       <Info className="mr-2 h-4 w-4" />
                       Details
                   </Button>
-                  {task.customer && task.customer.phone && (
+                  {task.task_type === 'Call' && task.customer && task.customer.phone && (
                       <Button 
                           size="sm"
                           onClick={() => onCall({ 
