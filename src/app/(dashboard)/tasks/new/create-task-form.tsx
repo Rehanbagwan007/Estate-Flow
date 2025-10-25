@@ -39,6 +39,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 interface CreateTaskFormProps {
   teamMembers: Profile[];
@@ -56,6 +57,7 @@ const taskFormSchema = z.object({
 export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof taskFormSchema>>({
     resolver: zodResolver(taskFormSchema),
@@ -81,9 +83,10 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
 
   const removeFile = (index: number) => {
     setFiles(files.filter((_, i) => i !== index));
-    setPreviews(previews.filter((_, i) => i !== index));
+    const newPreviews = previews.filter((_, i) => i !== index);
     // Clean up object URL
     URL.revokeObjectURL(previews[index]);
+    setPreviews(newPreviews);
   };
 
 
@@ -91,19 +94,22 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
     startTransition(async () => {
       const formData = new FormData();
       
-      Object.entries(values).forEach(([key, value]) => {
+      // Append all form values to formData
+      for (const key in values) {
+        const value = values[key as keyof typeof values];
         if (value instanceof Date) {
           formData.append(key, value.toISOString());
-        } else if (value !== undefined && value !== null) {
+        } else if (value !== undefined && value !== null && typeof value !== 'object') {
           formData.append(key, String(value));
         }
-      });
-
+      }
+      
       files.forEach(file => {
         formData.append('files', file);
       });
 
       const result = await createTask({ message: '' }, formData);
+
       if (result?.message && !result.success) {
         toast({
           title: 'Error',
@@ -118,6 +124,9 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
         form.reset();
         setFiles([]);
         setPreviews([]);
+        // Redirect to tasks page on success
+        router.push('/tasks');
+        router.refresh();
       }
     });
   };
@@ -247,7 +256,7 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
             <FormField
                 control={form.control}
                 name="files"
-                render={({ field }) => (
+                render={() => (
                 <FormItem>
                 <FormLabel>Attachments (Photos)</FormLabel>
                 <FormControl>
@@ -274,7 +283,7 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
             )}
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline">Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Task
