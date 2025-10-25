@@ -74,4 +74,4 @@ export type AssignmentStatus = Enums<'assignment_status'>;
 export type PropertyType = Enums<'property_type'>;
 export type TaskStatus = Enums<'task_status'>;
 export type JobReportStatus = Enums<'job_report_status'>;
-export type TaskType = Enums<'task_type'>;
+export type TaskType = 'Follow-up' | 'Call' | 'Site Visit' | 'Meeting';
