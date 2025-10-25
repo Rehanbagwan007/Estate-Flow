@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
       .from('call_logs')
       .select(`
         *,
-        agent:profiles(*),
-        customer:profiles(*)
+        agent:profiles!call_logs_agent_id_fkey(*),
+        customer:profiles!call_logs_customer_id_fkey(*)
       `)
       .order('created_at', { ascending: false })
       .limit(20);
