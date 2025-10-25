@@ -315,6 +315,124 @@ export type Database = {
           },
         ]
       }
+      job_reports: {
+        Row: {
+          id: string
+          user_id: string
+          report_to: string | null
+          report_date: string
+          details: string
+          travel_distance_km: number | null
+          site_visit_locations: string | null
+          status: Database["public"]["Enums"]["job_report_status"]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          report_to?: string | null
+          report_date?: string
+          details: string
+          travel_distance_km?: number | null
+          site_visit_locations?: string | null
+          status?: Database["public"]["Enums"]["job_report_status"]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          report_to?: string | null
+          report_date?: string
+          details?: string
+          travel_distance_km?: number | null
+          site_visit_locations?: string | null
+          status?: Database["public"]["Enums"]["job_report_status"]
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_reports_report_to_fkey"
+            columns: ["report_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      job_report_media: {
+        Row: {
+          id: string
+          report_id: string
+          file_path: string
+          file_type: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          report_id: string
+          file_path: string
+          file_type?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          report_id?: string
+          file_path?: string
+          file_type?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_report_media_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "job_reports"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      task_media: {
+        Row: {
+            id: string
+            task_id: string
+            file_path: string
+            file_type: string | null
+            created_at: string
+        }
+        Insert: {
+            id?: string
+            task_id: string
+            file_path: string
+            file_type?: string | null
+            created_at?: string
+        }
+        Update: {
+            id?: string
+            task_id?: string
+            file_path?: string
+            file_type?: string | null
+            created_at?: string
+        }
+        Relationships: [
+            {
+                foreignKeyName: "task_media_task_id_fkey"
+                columns: ["task_id"]
+                isOneToOne: false
+                referencedRelation: "tasks"
+                referencedColumns: ["id"]
+            }
+        ]
+      }
       lead_notes: {
         Row: {
           created_at: string
@@ -720,6 +838,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          location_address: string | null
           related_assignment_id: string | null
           related_customer_id: string | null
           related_lead_id: string | null
@@ -734,6 +853,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          location_address?: string | null
           related_assignment_id?: string | null
           related_customer_id?: string | null
           related_lead_id?: string | null
@@ -748,6 +868,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          location_address?: string | null
           related_assignment_id?: string | null
           related_customer_id?: string | null
           related_lead_id?: string | null
@@ -756,6 +877,20 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_tasks_related_assignment_id"
+            columns: ["related_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "agent_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_tasks_related_customer_id"
+            columns: ["related_customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_assigned_to_fkey"
             columns: ["assigned_to"]
@@ -766,20 +901,6 @@ export type Database = {
           {
             foreignKeyName: "tasks_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_related_assignment_id_fkey"
-            columns: ["related_assignment_id"]
-            isOneToOne: false
-            referencedRelation: "agent_assignments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_related_customer_id_fkey"
-            columns: ["related_customer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -860,6 +981,7 @@ export type Database = {
         | "meeting_scheduled"
         | "completed"
         | "cancelled"
+      job_report_status: "submitted" | "approved" | "rejected"
       lead_status: "Hot" | "Warm" | "Cold"
       notification_channel: "app" | "email" | "whatsapp" | "sms"
       notification_type:

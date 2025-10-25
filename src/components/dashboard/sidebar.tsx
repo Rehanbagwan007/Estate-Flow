@@ -16,7 +16,9 @@ import {
   Award,
   Building,
   UserCheck,
-  Bell
+  Bell,
+  FileText,
+  PlusCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Logo } from '@/components/icons/logo';
@@ -34,6 +36,7 @@ export function Sidebar({ userRole }: SidebarProps) {
   const navItems = [
     // Common items
     { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['super_admin', 'admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2', 'customer'] },
+    { href: '/job-reports', label: 'Job Reports', icon: FileText, roles: ['super_admin', 'admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
     
     // Super Admin & Admin
     { href: '/admin/users', label: 'User Management', icon: UserCheck, roles: ['super_admin', 'admin'] },
@@ -53,6 +56,7 @@ export function Sidebar({ userRole }: SidebarProps) {
     
     // Tasks (Admin, Agent, Sales roles)
     { href: '/tasks', label: 'Tasks', icon: ListTodo, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
+    { href: '/tasks/new', label: 'New Task', icon: PlusCircle, roles: ['super_admin', 'admin', 'sales_manager'] },
     
     // Calls (Caller roles, Admin, Agent)
     { href: '/calls', label: 'Call Center', icon: Phone, roles: ['super_admin', 'admin', 'caller_1', 'caller_2', 'agent'] },
@@ -73,7 +77,7 @@ export function Sidebar({ userRole }: SidebarProps) {
 
   const isActive = (href: string) => {
     // Exact match for dashboard, startsWith for others
-    if (href === '/dashboard') return pathname === href;
+    if (href === '/dashboard' || href === '/') return pathname === href;
     return pathname.startsWith(href);
   };
 

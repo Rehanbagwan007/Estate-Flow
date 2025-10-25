@@ -68,7 +68,7 @@ export function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
                 supabase.from('leads').select('*, assigned_to:profiles(*)').in('assigned_to', allTeamIds),
                 supabase.from('agent_assignments').select('*, agent:profiles!agent_assignments_agent_id_fkey(*)').in('agent_id', allTeamIds),
                 supabase.from('call_logs').select('*, agent:profiles!call_logs_agent_id_fkey(*)').in('agent_id', allTeamIds),
-                supabase.from('tasks').select('*, property:related_property_id(*, property_media(file_path)), customer:related_customer_id(*), assigned_to_profile:assigned_to(*)').in('assigned_to', allTeamIds)
+                supabase.from('tasks').select('*, property:related_property_id(*, property_media(file_path)), customer:profiles!tasks_related_customer_id_fkey(*), assigned_to_profile:assigned_to(*)').in('assigned_to', allTeamIds)
             ]);
 
             console.log(tasksResult)
@@ -268,5 +268,3 @@ export function SalesManagerDashboard({ userId }: SalesManagerDashboardProps) {
     </>
   );
 }
-
-    
