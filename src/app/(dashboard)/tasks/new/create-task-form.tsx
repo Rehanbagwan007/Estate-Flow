@@ -40,31 +40,29 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { taskSchema as baseTaskSchema } from '@/schemas';
 
 interface CreateTaskFormProps {
   teamMembers: Profile[];
 }
 
-const taskFormSchema = z.object({
-  title: z.string().min(3, 'Title must be at least 3 characters long.'),
-  description: z.string().optional(),
-  assigned_to: z.string().uuid('You must select a team member to assign the task to.'),
-  due_date: z.date().optional(),
-  location_address: z.string().url('Please enter a valid URL for the location.').optional().or(z.literal('')),
+const taskSchema = baseTaskSchema.extend({
   files: z.any().optional(),
 });
+
 
 export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
 
-  const form = useForm<z.infer<typeof taskFormSchema>>({
-    resolver: zodResolver(taskFormSchema),
+  const form = useForm<z.infer<typeof taskSchema>>({
+    resolver: zodResolver(taskSchema),
     defaultValues: {
       title: '',
       description: '',
       location_address: '',
+      task_type: 'Follow-up',
     },
   });
 
@@ -90,7 +88,7 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
   };
 
 
-  const onSubmit = (values: z.infer<typeof taskFormSchema>) => {
+  const onSubmit = (values: z.infer<typeof taskSchema>) => {
     startTransition(async () => {
       const formData = new FormData();
       
@@ -174,7 +172,30 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
               )}
             />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
+              <FormField
+                control={form.control}
+                name="task_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Task Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a task type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Follow-up">Follow-up</SelectItem>
+                        <SelectItem value="Call">Call</SelectItem>
+                        <SelectItem value="Site Visit">Site Visit</SelectItem>
+                        <SelectItem value="Meeting">Meeting</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
                     control={form.control}
                     name="assigned_to"
                     render={({ field }) => (
@@ -198,6 +219,8 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
                         </FormItem>
                     )}
                 />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                     control={form.control}
                     name="due_date"
@@ -236,23 +259,24 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
                         </FormItem>
                     )}
                 />
+                 <FormField
+                  control={form.control}
+                  name="location_address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location (Google Maps Link)</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="https://maps.app.goo.gl/..." {...field} className="pl-10" />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
             </div>
-            <FormField
-              control={form.control}
-              name="location_address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location (Google Maps Link)</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                        <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="https://maps.app.goo.gl/..." {...field} className="pl-10" />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+           
             <FormField
                 control={form.control}
                 name="files"

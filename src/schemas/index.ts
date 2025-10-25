@@ -56,4 +56,12 @@ export const taskSchema = z.object({
   assigned_to: z.string().uuid('Please select an agent'),
   related_customer_id: z.string().uuid().optional().nullable(),
   related_property_id: z.string().uuid().optional().nullable(),
+  task_type: z.enum(['Follow-up', 'Call', 'Site Visit', 'Meeting']),
+  location_address: z.string().url('Please enter a valid URL for the location.').optional().or(z.literal('')),
+});
+
+export const reportSchema = z.object({
+  details: z.string().min(10, 'Please provide more details about your work.'),
+  travel_distance: z.coerce.number().min(0).optional(),
+  site_visit_locations: z.string().optional(),
 });
