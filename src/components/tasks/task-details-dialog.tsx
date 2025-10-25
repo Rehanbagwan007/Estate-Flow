@@ -4,13 +4,14 @@
 import { useState, useTransition } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import type { Task, Property, Profile, TaskMedia, TaskStatus } from '@/lib/types';
-import { Building2, User, DollarSign, MapPin, Bed, Bath, Square, Phone, Link as LinkIcon, Camera, Loader2 } from 'lucide-react';
+import { Building2, User, DollarSign, MapPin, Bed, Bath, Square, Phone, Link as LinkIcon, Camera, Loader2, Eye } from 'lucide-react';
 import Image from 'next/image';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { updateTaskStatus } from '@/app/(dashboard)/tasks/actions';
+import { Label } from '@/components/ui/label';
 
 interface EnrichedTask extends Task {
     property?: (Property & { property_media?: { file_path: string }[] }) | null;
