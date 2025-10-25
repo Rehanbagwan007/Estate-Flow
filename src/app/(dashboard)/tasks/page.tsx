@@ -6,15 +6,13 @@ import type { Profile } from '@/lib/types';
 async function getTasksForUser(userId: string, userRole: Profile['role']) {
     const supabase = createClient();
     
-    let query = supabase.from('tasks').select('*, customer:related_customer_id(*), task_media(*)');
+    let query = supabase.from('tasks').select('*, customer:related_customer_id(*), task_media(*), property:related_property_id(*)');
 
     if (userRole === 'super_admin' || userRole === 'admin' || userRole === 'sales_manager') {
-        // Managers see their own tasks and their team's tasks
         const { data: team } = await supabase.from('profiles').select('id').in('role', ['sales_executive_1', 'sales_executive_2', 'agent']);
         const teamIds = team?.map(t => t.id) || [];
         query = query.in('assigned_to', [userId, ...teamIds]);
     } else {
-        // Regular users see only tasks assigned to them
         query = query.eq('assigned_to', userId);
     }
     

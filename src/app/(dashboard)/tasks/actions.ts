@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import type { Task } from '@/lib/types';
+import type { Task, TaskStatus } from '@/lib/types';
 
 const taskSchema = z.object({
     title: z.string().min(3),
@@ -59,7 +59,7 @@ export async function createTask(
     
     // Handle file uploads
     if (files.length > 0 && files[0].size > 0) {
-      for (const file of files) {
+      for (const file of file) {
         const filePath = `${user.id}/task_media/${savedTask.id}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from('task_media')
@@ -98,4 +98,50 @@ export async function createTask(
     success: true,
     message: 'Task created and assigned successfully!',
   };
+}
+
+export async function updateTaskStatus(taskId: string, status: TaskStatus) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { error: 'Authentication required.' };
+    }
+
+    // Optional: Add a check to ensure the user is authorized to update this task
+    const { data: task, error: fetchError } = await supabase
+        .from('tasks')
+        .select('assigned_to, created_by')
+        .eq('id', taskId)
+        .single();
+    
+    if (fetchError || !task) {
+        return { error: 'Task not found.' };
+    }
+
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+
+    const canUpdate = 
+        task.assigned_to === user.id || 
+        task.created_by === user.id ||
+        ['super_admin', 'admin', 'sales_manager'].includes(profile?.role || '');
+
+    if (!canUpdate) {
+        return { error: 'You are not authorized to update this task.' };
+    }
+
+    const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ status: status, updated_at: new Date().toISOString() })
+        .eq('id', taskId);
+
+    if (updateError) {
+        console.error('Error updating task status:', updateError);
+        return { error: 'Failed to update task status.' };
+    }
+
+    revalidatePath('/(dashboard)/tasks');
+    revalidatePath('/dashboard');
+
+    return { success: true, message: `Task status updated to ${status}.` };
 }
