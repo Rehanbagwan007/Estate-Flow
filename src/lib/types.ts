@@ -32,6 +32,7 @@ export type Database = MergeDeep<
         tasks: {
           Row: {
             task_type: 'Follow-up' | 'Call' | 'Site Visit' | 'Meeting';
+            customer_phone: string | null;
           }
         }
       };
@@ -42,7 +43,7 @@ export type Database = MergeDeep<
 export type Profile = Tables<'profiles'>;
 export type Property = Tables<'properties'> & { property_media?: { file_path: string }[] };
 export type Lead = Tables<'leads'>;
-export type Task = Tables<'tasks'> & { related_customer_id?: string | null; related_assignment_id?: string | null; };
+export type Task = Tables<'tasks'> & { related_customer_id?: string | null; related_assignment_id?: string | null; customer_phone?: string | null };
 export type LeadNote = Tables<'lead_notes'>;
 export type PropertyInterest = Tables<'property_interests'>;
 export type Appointment = Tables<'appointments'>;
@@ -75,3 +76,5 @@ export type PropertyType = Enums<'property_type'>;
 export type TaskStatus = Enums<'task_status'>;
 export type JobReportStatus = Enums<'job_report_status'>;
 export type TaskType = 'Follow-up' | 'Call' | 'Site Visit' | 'Meeting';
+
+    

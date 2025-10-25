@@ -857,6 +857,7 @@ export type Database = {
           title: string
           updated_at: string
           task_type: Database["public"]["Enums"]["task_type"]
+          customer_phone: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -874,6 +875,7 @@ export type Database = {
           title: string
           updated_at?: string
           task_type?: Database["public"]["Enums"]["task_type"]
+          customer_phone?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -891,6 +893,7 @@ export type Database = {
           title?: string
           updated_at?: string
           task_type?: Database["public"]["Enums"]["task_type"]
+          customer_phone?: string | null
         }
         Relationships: [
           {
@@ -1118,3 +1121,5 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
+
+    

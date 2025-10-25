@@ -20,9 +20,13 @@ export async function createTask(
   }
   
   const rawData = Object.fromEntries(formData.entries());
+  
+  // Handle date separately
+  const dueDate = rawData.due_date ? new Date(rawData.due_date as string) : undefined;
+  
   const validatedFields = taskSchema.safeParse({
     ...rawData,
-    due_date: rawData.due_date ? new Date(rawData.due_date as string) : undefined,
+    due_date: dueDate,
   });
 
   if (!validatedFields.success) {
@@ -40,6 +44,7 @@ export async function createTask(
       .from('tasks')
       .insert({
         ...validatedFields.data,
+        due_date: validatedFields.data.due_date?.toISOString(),
         created_by: user.id,
         status: 'Todo',
       })
@@ -227,3 +232,5 @@ export async function submitTaskReport(taskId: string, formData: FormData) {
 
   return { success: true };
 }
+
+    

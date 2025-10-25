@@ -58,6 +58,7 @@ export const taskSchema = z.object({
   related_property_id: z.string().uuid().optional().nullable(),
   task_type: z.enum(['Follow-up', 'Call', 'Site Visit', 'Meeting']),
   location_address: z.string().url('Please enter a valid URL for the location.').optional().or(z.literal('')),
+  customer_phone: z.string().optional().nullable(),
 });
 
 export const reportSchema = z.object({
@@ -65,3 +66,5 @@ export const reportSchema = z.object({
   travel_distance: z.coerce.number().min(0).optional(),
   site_visit_locations: z.string().optional(),
 });
+
+    

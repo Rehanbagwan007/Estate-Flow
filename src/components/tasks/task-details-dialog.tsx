@@ -34,13 +34,17 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
     if (!task) return null;
+    
+    const customerName = task.customer ? `${task.customer.first_name} ${task.customer.last_name}` : 'the customer';
+    const effectiveCustomerPhone = task.customer?.phone || task.customer_phone;
+
 
     const handleCallClick = () => {
-        if (task.customer && task.customer.phone) {
+        if (effectiveCustomerPhone) {
             onCall({
-                customerId: task.customer.id,
-                customerPhone: task.customer.phone,
-                customerName: `${task.customer.first_name} ${task.customer.last_name}`
+                customerId: task.customer?.id || 'unknown',
+                customerPhone: effectiveCustomerPhone,
+                customerName: customerName
             });
             onClose();
         }
@@ -85,9 +89,15 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
                         {task.customer && (
                             <div className="space-y-2">
                                 <h4 className="font-semibold flex items-center gap-2"><User className="h-4 w-4" /> Customer</h4>
-                                <p className="text-sm">{task.customer.first_name} {task.customer.last_name}</p>
+                                <p className="text-sm">{customerName}</p>
                                 <p className="text-sm text-muted-foreground">{task.customer.email}</p>
-                                <p className="text-sm text-muted-foreground">{task.customer.phone}</p>
+                                <p className="text-sm text-muted-foreground">{effectiveCustomerPhone}</p>
+                            </div>
+                        )}
+                        {!task.customer && effectiveCustomerPhone && (
+                             <div className="space-y-2">
+                                <h4 className="font-semibold flex items-center gap-2"><User className="h-4 w-4" /> Customer Contact</h4>
+                                <p className="text-sm text-muted-foreground">{effectiveCustomerPhone}</p>
                             </div>
                         )}
                         {task.property && (
@@ -163,7 +173,7 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
                 </ScrollArea>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Close</Button>
-                     {task.task_type === 'Call' && task.customer?.phone && (
+                     {task.task_type === 'Call' && effectiveCustomerPhone && (
                         <Button
                             onClick={handleCallClick}
                             disabled={task.status === 'Done'}
@@ -187,3 +197,5 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
         </>
     );
 }
+
+    

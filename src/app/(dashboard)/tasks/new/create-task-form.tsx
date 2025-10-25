@@ -30,7 +30,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, X, Calendar as CalendarIcon, Link as LinkIcon } from 'lucide-react';
+import { Loader2, UploadCloud, X, Calendar as CalendarIcon, Link as LinkIcon, Phone } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import Image from 'next/image';
 import type { Profile } from '@/lib/types';
@@ -63,12 +63,15 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
       description: '',
       location_address: '',
       task_type: 'Follow-up',
+      customer_phone: '',
     },
   });
 
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   
+  const taskType = form.watch('task_type');
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const newFiles = Array.from(event.target.files);
@@ -220,6 +223,29 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
                     )}
                 />
             </div>
+
+            {(taskType === 'Call' || taskType === 'Follow-up') && (
+              <FormField
+                control={form.control}
+                name="customer_phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customer Phone / WhatsApp</FormLabel>
+                     <FormControl>
+                        <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Enter phone number for the call/follow-up" {...field} className="pl-10" />
+                        </div>
+                      </FormControl>
+                    <FormDescription>
+                      Provide a phone number if this task is for a new contact not in the system.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                     control={form.control}
@@ -319,3 +345,5 @@ export function CreateTaskForm({ teamMembers }: CreateTaskFormProps) {
     </Form>
   );
 }
+
+    
