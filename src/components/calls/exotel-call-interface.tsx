@@ -150,6 +150,8 @@ export function ExotelCallInterface({
       const data = await response.json();
       if (data.success) {
         setRecentCalls(data.calls);
+      } else {
+        console.error("Error fetching recent calls:", data.error);
       }
     } catch (error) {
       console.error('Error fetching recent calls:', error);
