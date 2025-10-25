@@ -36,7 +36,6 @@ const reportSchema = z.object({
 export function JobReportForm({ userRole, userId }: JobReportFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const isSalesTeam = ['sales_manager', 'sales_executive_1', 'sales_executive_2'].includes(userRole);
 
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -120,68 +119,66 @@ export function JobReportForm({ userRole, userId }: JobReportFormProps) {
           )}
         />
 
-        {isSalesTeam && (
-          <>
-            <FormField
-              control={form.control}
-              name="travel_distance"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Travel Distance (km)</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" step="0.1" placeholder="e.g., 50.5" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="site_visit_locations"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Site Visit Locations</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      {...field} 
-                      placeholder="List the places you visited, e.g., 'Client Office, Bandra', 'Project Site, Andheri'"
-                      rows={3}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="files"
-              render={() => (
+        <>
+          <FormField
+            control={form.control}
+            name="travel_distance"
+            render={({ field }) => (
               <FormItem>
-                <FormLabel>Upload Visit Photos</FormLabel>
+                <FormLabel>Travel Distance (km)</FormLabel>
                 <FormControl>
-                  <div className="relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted">
-                    <UploadCloud className="w-8 h-8 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Click to upload photos</p>
-                    <Input type="file" className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" multiple onChange={handleFileChange} accept="image/*" />
-                  </div>
+                  <Input {...field} type="number" step="0.1" placeholder="e.g., 50.5" />
                 </FormControl>
+                <FormMessage />
               </FormItem>
-              )}
-             />
-             {previews.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {previews.map((preview, index) => (
-                    <div key={index} className="relative aspect-square">
-                       <Image src={preview} alt={`Preview ${index}`} layout="fill" className="object-cover rounded-md" />
-                       <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removeFile(index)}>
-                          <X className="h-4 w-4" />
-                       </Button>
-                    </div>
-                  ))}
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="site_visit_locations"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Site Visit Locations</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    {...field} 
+                    placeholder="List the places you visited, e.g., 'Client Office, Bandra', 'Project Site, Andheri'"
+                    rows={3}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="files"
+            render={() => (
+            <FormItem>
+              <FormLabel>Upload Visit Photos</FormLabel>
+              <FormControl>
+                <div className="relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted">
+                  <UploadCloud className="w-8 h-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Click to upload photos</p>
+                  <Input type="file" className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" multiple onChange={handleFileChange} accept="image/*" />
                 </div>
-             )}
-          </>
-        )}
+              </FormControl>
+            </FormItem>
+            )}
+            />
+            {previews.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {previews.map((preview, index) => (
+                  <div key={index} className="relative aspect-square">
+                      <Image src={preview} alt={`Preview ${index}`} layout="fill" className="object-cover rounded-md" />
+                      <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removeFile(index)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+        </>
 
         <div className="flex justify-end pt-2">
           <Button type="submit" disabled={isPending}>
