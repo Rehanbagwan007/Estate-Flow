@@ -16,15 +16,22 @@ import {
 } from "@/components/ui/tabs"
 import { TaskList } from '@/components/tasks/task-list';
 import { TaskCalendar } from '@/components/tasks/task-calendar';
-import type { Task } from '@/lib/types';
+import type { Profile, Task, TaskMedia } from '@/lib/types';
 import { useTaskStore } from '@/lib/store/task-store';
 import { useEffect, useRef } from 'react';
+import Link from 'next/link';
 
-interface TasksClientProps {
-  initialTasks: Task[];
+interface EnrichedTask extends Task {
+  task_media?: TaskMedia[] | null;
+  customer?: Profile | null;
 }
 
-export function TasksClient({ initialTasks }: TasksClientProps) {
+interface TasksClientProps {
+  initialTasks: EnrichedTask[];
+  userRole: Profile['role'];
+}
+
+export function TasksClient({ initialTasks, userRole }: TasksClientProps) {
   const setTasks = useTaskStore((state) => state.setTasks);
   const tasks = useTaskStore((state) => state.tasks);
   const initialized = useRef(false);
@@ -35,6 +42,8 @@ export function TasksClient({ initialTasks }: TasksClientProps) {
       initialized.current = true;
     }
   }, [initialTasks, setTasks]);
+  
+  const canCreateTasks = ['super_admin', 'admin', 'sales_manager'].includes(userRole);
 
   return (
     <Tabs defaultValue="list">
@@ -44,10 +53,14 @@ export function TasksClient({ initialTasks }: TasksClientProps) {
         <TabsTrigger value="calendar">Calendar</TabsTrigger>
       </TabsList>
       <div className="ml-auto flex items-center gap-2">
-        <Button size="sm" className="h-7 gap-1 text-sm">
-          <PlusCircle className="h-3.5 w-3.5" />
-          <span className="sr-only sm:not-sr-only">New Task</span>
-        </Button>
+        {canCreateTasks && (
+            <Button size="sm" className="h-7 gap-1 text-sm" asChild>
+                <Link href="/tasks/new">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only">New Task</span>
+                </Link>
+            </Button>
+        )}
       </div>
     </div>
     <TabsContent value="list">
@@ -57,7 +70,7 @@ export function TasksClient({ initialTasks }: TasksClientProps) {
           <CardDescription>Manage your tasks and reminders.</CardDescription>
         </CardHeader>
         <CardContent>
-          <TaskList tasks={tasks} />
+          <TaskList tasks={tasks as EnrichedTask[]} onCall={() => {}} onTaskSelect={() => {}} />
         </CardContent>
       </Card>
     </TabsContent>

@@ -323,7 +323,6 @@ export type Database = {
           report_date: string
           details: string
           travel_distance_km: number | null
-          site_visits: number | null
           site_visit_locations: string | null
           status: Database["public"]["Enums"]["job_report_status"]
           created_at: string
@@ -336,7 +335,6 @@ export type Database = {
           report_date?: string
           details: string
           travel_distance_km?: number | null
-          site_visits?: number | null
           site_visit_locations?: string | null
           status?: Database["public"]["Enums"]["job_report_status"]
           created_at?: string
@@ -349,7 +347,6 @@ export type Database = {
           report_date?: string
           details?: string
           travel_distance_km?: number | null
-          site_visits?: number | null
           site_visit_locations?: string | null
           status?: Database["public"]["Enums"]["job_report_status"]
           created_at?: string
@@ -402,6 +399,38 @@ export type Database = {
             referencedRelation: "job_reports"
             referencedColumns: ["id"]
           }
+        ]
+      }
+      task_media: {
+        Row: {
+            id: string
+            task_id: string
+            file_path: string
+            file_type: string | null
+            created_at: string
+        }
+        Insert: {
+            id?: string
+            task_id: string
+            file_path: string
+            file_type?: string | null
+            created_at?: string
+        }
+        Update: {
+            id?: string
+            task_id?: string
+            file_path?: string
+            file_type?: string | null
+            created_at?: string
+        }
+        Relationships: [
+            {
+                foreignKeyName: "task_media_task_id_fkey"
+                columns: ["task_id"]
+                isOneToOne: false
+                referencedRelation: "tasks"
+                referencedColumns: ["id"]
+            }
         ]
       }
       lead_notes: {
@@ -809,6 +838,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          location_address: string | null
           related_assignment_id: string | null
           related_customer_id: string | null
           related_lead_id: string | null
@@ -823,6 +853,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          location_address?: string | null
           related_assignment_id?: string | null
           related_customer_id?: string | null
           related_lead_id?: string | null
@@ -837,6 +868,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          location_address?: string | null
           related_assignment_id?: string | null
           related_customer_id?: string | null
           related_lead_id?: string | null

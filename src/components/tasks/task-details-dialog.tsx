@@ -2,8 +2,8 @@
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import type { Task, Property, Profile } from '@/lib/types';
-import { Building2, User, DollarSign, MapPin, Bed, Bath, Square, Phone } from 'lucide-react';
+import type { Task, Property, Profile, TaskMedia } from '@/lib/types';
+import { Building2, User, DollarSign, MapPin, Bed, Bath, Square, Phone, Link as LinkIcon, Camera } from 'lucide-react';
 import Image from 'next/image';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 interface EnrichedTask extends Task {
     property?: (Property & { property_media?: { file_path: string }[] }) | null;
     customer?: Profile | null;
+    task_media?: TaskMedia[] | null;
 }
 
 interface TaskDetailsDialogProps {
@@ -75,6 +76,27 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall }: TaskDetails
                                 </div>
                             </div>
                         )}
+                         {task.location_address && (
+                            <div className="space-y-2 pt-4 border-t">
+                                <h4 className="font-semibold flex items-center gap-2"><MapPin className="h-4 w-4" /> Location</h4>
+                                <a href={task.location_address} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline flex items-center gap-2">
+                                    <LinkIcon className="h-4 w-4" />
+                                    <span>Open in Google Maps</span>
+                                </a>
+                            </div>
+                         )}
+                         {task.task_media && task.task_media.length > 0 && (
+                            <div className="space-y-2 pt-4 border-t">
+                                <h4 className="font-semibold flex items-center gap-2"><Camera className="h-4 w-4" /> Attachments</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {task.task_media.map((media, index) => (
+                                        <div key={index} className="relative aspect-square rounded-md overflow-hidden">
+                                            <Image src={media.file_path} alt={`Task attachment ${index + 1}`} fill className="object-cover" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                         )}
                     </div>
                 </ScrollArea>
                 <DialogFooter>

@@ -1,18 +1,19 @@
 
 'use client';
 
-import type { Task, Property, Profile } from '@/lib/types';
+import type { Task, Property, Profile, TaskMedia } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Building2, Phone, User, Info } from 'lucide-react';
+import { Building2, Phone, User, Info, MapPin } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { useState } from 'react';
+import Image from 'next/image';
 
 interface EnrichedTask extends Task {
     property?: (Property & { property_media?: { file_path: string }[] }) | null;
     customer?: Profile | null;
+    task_media?: TaskMedia[] | null;
 }
 
 interface TaskListProps {
@@ -28,7 +29,7 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
           <Card key={task.id} className={task.status === 'Done' ? 'bg-muted/50' : ''}>
               <CardHeader className="flex flex-row items-start gap-4 space-y-0 p-4">
                   <Checkbox id={`task-${task.id}`} className="mt-1" checked={task.status === 'Done'} />
-                  <div className="grid gap-1">
+                  <div className="grid gap-1 flex-1">
                       <CardTitle className="text-lg">{task.title}</CardTitle>
                       <CardDescription>
                           {task.due_date && (
@@ -63,6 +64,26 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
                           <span className="font-medium">{task.property.title}</span>
                        </div>
                   )}
+
+                  {task.location_address && (
+                     <a href={task.location_address} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline">
+                        <MapPin className="h-4 w-4" />
+                        <span>View Location</span>
+                    </a>
+                  )}
+
+                 {task.task_media && task.task_media.length > 0 && (
+                    <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Attachments</p>
+                        <div className="flex gap-2">
+                            {task.task_media.map((media, index) => (
+                                <div key={index} className="relative h-16 w-16 rounded-md overflow-hidden">
+                                    <Image src={media.file_path} alt={`Task media ${index + 1}`} fill className="object-cover" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
               </CardContent>
               <CardFooter className="p-4 pt-0 flex justify-end gap-2">
                    <Button variant="outline" size="sm" onClick={() => onTaskSelect(task)}>
