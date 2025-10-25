@@ -25,7 +25,11 @@ interface TaskListProps {
 export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
   return (
       <div className="space-y-4">
-        {tasks.map((task) => (
+        {tasks.map((task) => {
+          const customerName = task.customer ? `${task.customer.first_name} ${task.customer.last_name}` : 'the customer';
+          const effectiveCustomerPhone = task.customer?.phone || task.customer_phone;
+          
+          return (
           <Card key={task.id} className={task.status === 'Done' ? 'bg-muted/50' : ''}>
               <CardHeader className="flex flex-row items-start gap-4 space-y-0 p-4">
                   <Checkbox id={`task-${task.id}`} className="mt-1" checked={task.status === 'Done'} />
@@ -44,14 +48,14 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
                       {task.description}
                   </p>
 
-                  {task.customer && (
+                  {(task.customer || effectiveCustomerPhone) && (
                        <div className="flex items-center gap-4 text-sm border-t pt-4 mt-4">
                           <div className="flex items-center gap-2 text-muted-foreground">
                               <User className="h-4 w-4" />
                               <span>Customer:</span>
                           </div>
-                          <span className="font-medium">{task.customer.first_name} {task.customer.last_name}</span>
-                          <span className="text-muted-foreground">{task.customer.phone}</span>
+                          <span className="font-medium">{customerName}</span>
+                          <span className="text-muted-foreground">{effectiveCustomerPhone}</span>
                        </div>
                   )}
                   
@@ -90,13 +94,13 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
                       <Info className="mr-2 h-4 w-4" />
                       Details
                   </Button>
-                  {task.customer && task.customer.phone && (
+                  {task.task_type === 'Call' && effectiveCustomerPhone && (
                       <Button 
                           size="sm"
                           onClick={() => onCall({ 
-                              customerId: task.customer!.id, 
-                              customerPhone: task.customer!.phone!, 
-                              customerName: `${task.customer!.first_name} ${task.customer!.last_name}`
+                              customerId: task.customer?.id || 'unknown', 
+                              customerPhone: effectiveCustomerPhone, 
+                              customerName: customerName
                           })}
                           disabled={task.status === 'Done'}
                       >
@@ -106,7 +110,9 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
                   )}
               </CardFooter>
           </Card>
-        ))}
+        )})}
       </div>
   );
 }
+
+    

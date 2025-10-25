@@ -170,7 +170,7 @@ export function JobReportForm({ userRole, userId }: JobReportFormProps) {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {previews.map((preview, index) => (
                   <div key={index} className="relative aspect-square">
-                      <Image src={preview} alt={`Preview ${index}`} layout="fill" className="object-cover rounded-md" />
+                      <Image src={preview} alt={`Preview ${index}`} fill className="object-cover rounded-md" />
                       <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removeFile(index)}>
                         <X className="h-4 w-4" />
                       </Button>

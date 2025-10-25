@@ -4,14 +4,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { Task, TaskStatus } from '@/lib/types';
-
-const taskSchema = z.object({
-    title: z.string().min(3),
-    description: z.string().optional(),
-    assigned_to: z.string().uuid(),
-    due_date: z.string().optional(),
-    location_address: z.string().optional(),
-});
+import { taskSchema, reportSchema } from '@/schemas';
 
 export async function createTask(
   prevState: { message: string; success?: boolean },
@@ -26,9 +19,15 @@ export async function createTask(
     return { message: 'Authentication required.' };
   }
   
-  const validatedFields = taskSchema.safeParse(
-    Object.fromEntries(formData.entries())
-  );
+  const rawData = Object.fromEntries(formData.entries());
+  
+  // Handle date separately
+  const dueDate = rawData.due_date ? new Date(rawData.due_date as string) : undefined;
+  
+  const validatedFields = taskSchema.safeParse({
+    ...rawData,
+    due_date: dueDate,
+  });
 
   if (!validatedFields.success) {
     return {
@@ -45,6 +44,7 @@ export async function createTask(
       .from('tasks')
       .insert({
         ...validatedFields.data,
+        due_date: validatedFields.data.due_date?.toISOString(),
         created_by: user.id,
         status: 'Todo',
       })
@@ -141,7 +141,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
 
     if (updateError) {
         console.error('Error updating task status:', updateError);
-        return { error: 'Failed to update task status.' };
+        return { error: `Failed to update task status. ${updateError.message}` };
     }
 
     revalidatePath('/(dashboard)/tasks');
@@ -149,3 +149,90 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
 
     return { success: true, message: `Task status updated to ${status}.` };
 }
+
+export async function submitTaskReport(taskId: string, formData: FormData) {
+  const supabase = createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: 'Authentication required.' };
+  }
+
+  const { data: task } = await supabase.from('tasks').select('id, assigned_to').eq('id', taskId).single();
+  if (!task || task.assigned_to !== user.id) {
+    return { error: 'You are not authorized to submit a report for this task.' };
+  }
+
+  const values = {
+    details: formData.get('details'),
+    travel_distance: formData.get('travel_distance'),
+    site_visit_locations: formData.get('site_visit_locations'),
+  };
+
+  const validatedFields = reportSchema.safeParse(values);
+  if (!validatedFields.success) {
+    return { error: 'Invalid form data. ' + JSON.stringify(validatedFields.error.flatten().fieldErrors) };
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const reportPayload = {
+    user_id: user.id,
+    report_date: today,
+    details: validatedFields.data.details,
+    travel_distance_km: validatedFields.data.travel_distance,
+    site_visit_locations: validatedFields.data.site_visit_locations,
+    status: 'submitted' as const,
+    related_task_id: taskId,
+  };
+
+  const { data: savedReport, error: reportError } = await supabase
+    .from('job_reports')
+    .insert(reportPayload)
+    .select()
+    .single();
+
+  if (reportError) {
+    console.error('Error submitting task report:', reportError);
+    return { error: 'Failed to submit your report. Please try again.' };
+  }
+
+  if (!savedReport) {
+    return { error: 'Failed to create report entry.' };
+  }
+
+  const files = formData.getAll('files') as File[];
+  if (files.length > 0 && files[0].size > 0) {
+      for (const file of files) {
+        const filePath = `${user.id}/job_report_media/${savedReport.id}/${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('job_report_media')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Upload Error:', uploadError.message);
+          continue; 
+        }
+        
+        const { data: urlData } = supabase.storage
+          .from('job_report_media')
+          .getPublicUrl(filePath);
+
+        await supabase.from('job_report_media').insert({
+          report_id: savedReport.id,
+          file_path: urlData.publicUrl,
+          file_type: file.type,
+        });
+      }
+    }
+
+  // Mark task as complete after report submission
+  await supabase.from('tasks').update({ status: 'Done', updated_at: new Date().toISOString() }).eq('id', taskId);
+
+  revalidatePath('/(dashboard)/tasks');
+  revalidatePath('/(dashboard)/job-reports');
+
+  return { success: true };
+}
+
+    

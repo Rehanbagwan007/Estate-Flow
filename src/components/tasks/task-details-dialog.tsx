@@ -4,7 +4,7 @@
 import { useState, useTransition } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import type { Task, Property, Profile, TaskMedia, TaskStatus } from '@/lib/types';
-import { Building2, User, DollarSign, MapPin, Bed, Bath, Square, Phone, Link as LinkIcon, Camera, Loader2, Eye } from 'lucide-react';
+import { Building2, User, DollarSign, MapPin, Bed, Bath, Square, Phone, Link as LinkIcon, Camera, Loader2, Eye, FileText } from 'lucide-react';
 import Image from 'next/image';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { updateTaskStatus } from '@/app/(dashboard)/tasks/actions';
 import { Label } from '@/components/ui/label';
+import { TaskReportDialog } from './task-report-dialog';
 
 interface EnrichedTask extends Task {
     property?: (Property & { property_media?: { file_path: string }[] }) | null;
@@ -30,15 +31,20 @@ interface TaskDetailsDialogProps {
 export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: TaskDetailsDialogProps) {
     const { toast } = useToast();
     const [isUpdating, startTransition] = useTransition();
+    const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
     if (!task) return null;
+    
+    const customerName = task.customer ? `${task.customer.first_name} ${task.customer.last_name}` : 'the customer';
+    const effectiveCustomerPhone = task.customer?.phone || task.customer_phone;
+
 
     const handleCallClick = () => {
-        if (task.customer && task.customer.phone) {
+        if (effectiveCustomerPhone) {
             onCall({
-                customerId: task.customer.id,
-                customerPhone: task.customer.phone,
-                customerName: `${task.customer.first_name} ${task.customer.last_name}`
+                customerId: task.customer?.id || 'unknown',
+                customerPhone: effectiveCustomerPhone,
+                customerName: customerName
             });
             onClose();
         }
@@ -57,7 +63,21 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
         });
     };
 
+    const handleReportSuccess = () => {
+        setIsReportDialogOpen(false);
+        onUpdate();
+        onClose();
+        toast({ title: 'Success', description: 'Report submitted and task marked as complete.' });
+    };
+
     return (
+        <>
+        <TaskReportDialog 
+            isOpen={isReportDialogOpen}
+            onClose={() => setIsReportDialogOpen(false)}
+            task={task}
+            onSuccess={handleReportSuccess}
+        />
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-lg grid-rows-[auto_1fr_auto]">
                 <DialogHeader>
@@ -69,9 +89,15 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
                         {task.customer && (
                             <div className="space-y-2">
                                 <h4 className="font-semibold flex items-center gap-2"><User className="h-4 w-4" /> Customer</h4>
-                                <p className="text-sm">{task.customer.first_name} {task.customer.last_name}</p>
+                                <p className="text-sm">{customerName}</p>
                                 <p className="text-sm text-muted-foreground">{task.customer.email}</p>
-                                <p className="text-sm text-muted-foreground">{task.customer.phone}</p>
+                                <p className="text-sm text-muted-foreground">{effectiveCustomerPhone}</p>
+                            </div>
+                        )}
+                        {!task.customer && effectiveCustomerPhone && (
+                             <div className="space-y-2">
+                                <h4 className="font-semibold flex items-center gap-2"><User className="h-4 w-4" /> Customer Contact</h4>
+                                <p className="text-sm text-muted-foreground">{effectiveCustomerPhone}</p>
                             </div>
                         )}
                         {task.property && (
@@ -147,7 +173,7 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
                 </ScrollArea>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Close</Button>
-                    {task.customer && task.customer.phone && (
+                     {task.task_type === 'Call' && effectiveCustomerPhone && (
                         <Button
                             onClick={handleCallClick}
                             disabled={task.status === 'Done'}
@@ -156,8 +182,20 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
                             Call Customer
                         </Button>
                     )}
+                     {task.task_type === 'Site Visit' && (
+                        <Button
+                            onClick={() => setIsReportDialogOpen(true)}
+                            disabled={task.status === 'Done'}
+                        >
+                            <FileText className="mr-2 h-4 w-4" />
+                            Submit Report
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        </>
     );
 }
+
+    

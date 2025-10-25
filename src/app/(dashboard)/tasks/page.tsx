@@ -1,3 +1,4 @@
+
 import { createClient } from '@/lib/supabase/server';
 import { TasksClient } from './client';
 import { redirect } from 'next/navigation';
@@ -6,17 +7,14 @@ import type { Profile } from '@/lib/types';
 async function getTasksForUser(userId: string, userRole: Profile['role']) {
     const supabase = createClient();
     
-    let query = supabase.from('tasks').select('*, customer:related_customer_id(*), task_media(*), property:related_property_id(*)');
-
-    if (userRole === 'super_admin' || userRole === 'admin' || userRole === 'sales_manager') {
-        const { data: team } = await supabase.from('profiles').select('id').in('role', ['sales_executive_1', 'sales_executive_2', 'agent']);
-        const teamIds = team?.map(t => t.id) || [];
-        query = query.in('assigned_to', [userId, ...teamIds]);
-    } else {
-        query = query.eq('assigned_to', userId);
-    }
-    
-    const { data, error } = await query.order('created_at', { ascending: false });
+    // Corrected query: ALL users should only see tasks assigned directly to them.
+    // A separate "Team Tasks" view would be needed for managers to see subordinate tasks,
+    // but the current page should respect direct assignment.
+    const { data, error } = await supabase
+        .from('tasks')
+        .select('*, customer:related_customer_id(*), task_media(*), property:related_property_id(*)')
+        .eq('assigned_to', userId)
+        .order('created_at', { ascending: false });
 
     if (error) {
         console.error("Error fetching tasks:", error.message);

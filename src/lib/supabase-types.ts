@@ -327,6 +327,7 @@ export type Database = {
           status: Database["public"]["Enums"]["job_report_status"]
           created_at: string
           updated_at: string
+          related_task_id: string | null
         }
         Insert: {
           id?: string
@@ -339,6 +340,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["job_report_status"]
           created_at?: string
           updated_at?: string
+          related_task_id?: string | null
         }
         Update: {
           id?: string
@@ -351,6 +353,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["job_report_status"]
           created_at?: string
           updated_at?: string
+          related_task_id?: string | null
         }
         Relationships: [
           {
@@ -365,6 +368,13 @@ export type Database = {
             columns: ["report_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_job_reports_related_task"
+            columns: ["related_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           }
         ]
@@ -845,6 +855,9 @@ export type Database = {
           related_property_id: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
+          updated_at: string
+          task_type: Database["public"]["Enums"]["task_type"]
+          customer_phone: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -860,6 +873,9 @@ export type Database = {
           related_property_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
+          updated_at?: string
+          task_type?: Database["public"]["Enums"]["task_type"]
+          customer_phone?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -875,6 +891,9 @@ export type Database = {
           related_property_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
+          updated_at?: string
+          task_type?: Database["public"]["Enums"]["task_type"]
+          customer_phone?: string | null
         }
         Relationships: [
           {
@@ -1009,6 +1028,11 @@ export type Database = {
         | "customer_meeting"
         | "site_inspection"
         | "follow_up"
+      task_type:
+        | 'Follow-up'
+        | 'Call'
+        | 'Site Visit'
+        | 'Meeting'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1097,3 +1121,5 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
+
+    
