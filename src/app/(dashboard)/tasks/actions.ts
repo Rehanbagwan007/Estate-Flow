@@ -59,7 +59,7 @@ export async function createTask(
     
     // Handle file uploads
     if (files.length > 0 && files[0].size > 0) {
-      for (const file of file) {
+      for (const file of files) {
         const filePath = `${user.id}/task_media/${savedTask.id}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from('task_media')
