@@ -135,7 +135,7 @@ export async function saveProperty(
     // Handle file uploads
     if (files.length > 0 && files[0].size > 0) {
       for (const file of files) {
-        const filePath = `${user.id}/${savedProperty.id}/${Date.now()}-${file.name}`;
+        const filePath = `${user.id}/property_media/${savedProperty.id}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from('property_media')
           .upload(filePath, file);
@@ -181,6 +181,7 @@ export async function saveProperty(
                       property_id: savedProperty!.id,
                       platform: result.value.platform,
                       post_url: result.value.postUrl,
+                      shared_by: user.id
                   });
               } else if (result.status === 'fulfilled' && !result.value.success) {
                   console.error(`❌ ${result.value.platform} Failed: ${result.value.error}`);

@@ -19,9 +19,11 @@ export async function createTask(
     return { message: 'Authentication required.' };
   }
   
-  const validatedFields = taskSchema.safeParse(
-    Object.fromEntries(formData.entries())
-  );
+  const rawData = Object.fromEntries(formData.entries());
+  const validatedFields = taskSchema.safeParse({
+    ...rawData,
+    due_date: rawData.due_date ? new Date(rawData.due_date as string) : undefined,
+  });
 
   if (!validatedFields.success) {
     return {
@@ -53,7 +55,7 @@ export async function createTask(
     // Handle file uploads
     if (files.length > 0 && files[0].size > 0) {
       for (const file of files) {
-        const filePath = `${user.id}/${savedTask.id}/${Date.now()}-${file.name}`;
+        const filePath = `${user.id}/task_media/${savedTask.id}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from('task_media')
           .upload(filePath, file);
@@ -132,7 +134,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
 
     if (updateError) {
         console.error('Error updating task status:', updateError);
-        return { error: 'Failed to update task status.' };
+        return { error: `Failed to update task status. ${updateError.message}` };
     }
 
     revalidatePath('/(dashboard)/tasks');
@@ -195,7 +197,7 @@ export async function submitTaskReport(taskId: string, formData: FormData) {
   const files = formData.getAll('files') as File[];
   if (files.length > 0 && files[0].size > 0) {
       for (const file of files) {
-        const filePath = `${user.id}/job_reports/${savedReport.id}/${Date.now()}-${file.name}`;
+        const filePath = `${user.id}/job_report_media/${savedReport.id}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from('job_report_media')
           .upload(filePath, file);
