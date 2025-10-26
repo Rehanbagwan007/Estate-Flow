@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { propertySchema } from '@/schemas';
 import { revalidatePath } from 'next/cache';
 import type { Property } from '@/lib/types';
+import fetch from 'node-fetch';
 
 // --- Helper Functions & Interfaces ---
 
@@ -13,10 +14,12 @@ interface MediaUploadResult {
   platform: string;
   success: boolean;
   error?: string;
-  postUrl?: string; // Will hold the URL of the created post
+  postUrl?: string;
 }
 
-// A helper to fetch all image URLs associated with a property
+const GRAPH_API_VERSION = 'v19.0';
+const BASE_GRAPH_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
+
 async function getPropertyImageUrls(supabase: any, propertyId: string): Promise<string[] | null> {
     const { data, error } = await supabase
         .from('property_media')
@@ -31,66 +34,158 @@ async function getPropertyImageUrls(supabase: any, propertyId: string): Promise<
     return data.map(image => image.file_path);
 }
 
+// --- API Integration Functions (Real Implementation) ---
 
-// --- API Integration Functions (Placeholders) ---
+async function postToFacebook(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
+  const pageId = process.env.FACEBOOK_PAGE_ID;
+  const accessToken = process.env.META_ACCESS_TOKEN;
 
+  if (!pageId || !accessToken) {
+    return { success: false, platform: 'Facebook', error: 'Facebook Page ID or Access Token is not configured.' };
+  }
+  if (!imageUrls || imageUrls.length === 0) {
+    return { success: false, platform: 'Facebook', error: 'At least one image is required for Facebook.' };
+  }
+
+  const caption = `${property.title}\n\n${property.description}\n\nPrice: ₹${property.price.toLocaleString()}\nLocation: ${property.city}, ${property.state}\n\n#realestate #${property.city.replace(/\s+/g, '')} #${property.property_type}`;
+
+  try {
+    const uploadedPhotoIds: string[] = [];
+    for (const imageUrl of imageUrls) {
+      const uploadResponse = await fetch(`${BASE_GRAPH_URL}/${pageId}/photos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: imageUrl,
+          published: false, // Important for multi-photo posts
+          access_token: accessToken,
+        }),
+      });
+      const uploadResult = await uploadResponse.json() as { id?: string; error?: any };
+      if (!uploadResponse.ok || !uploadResult.id) {
+        throw new Error(`Failed to upload photo: ${uploadResult.error?.message || 'Unknown error'}`);
+      }
+      uploadedPhotoIds.push(uploadResult.id);
+    }
+    
+    // Create the post with the uploaded (but unpublished) photos
+    const postResponse = await fetch(`${BASE_GRAPH_URL}/${pageId}/feed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: caption,
+        attached_media: uploadedPhotoIds.map(id => ({ media_fbid: id })),
+        access_token: accessToken,
+      }),
+    });
+
+    const postResult = await postResponse.json() as { id?: string; error?: any };
+    if (!postResponse.ok || !postResult.id) {
+        throw new Error(`Failed to create Facebook post: ${postResult.error?.message || 'Unknown error'}`);
+    }
+    
+    const postUrl = `https://www.facebook.com/${postResult.id}`;
+    return { success: true, platform: 'Facebook', postUrl };
+
+  } catch (error: any) {
+    console.error('[Facebook Sharing Error]', error);
+    return { success: false, platform: 'Facebook', error: error.message };
+  }
+}
+
+async function postToInstagram(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
+  const igUserId = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+  const accessToken = process.env.META_ACCESS_TOKEN;
+
+  if (!igUserId || !accessToken) {
+    return { success: false, platform: 'Instagram', error: 'Instagram Account ID or Access Token is not configured.' };
+  }
+  if (!imageUrls || imageUrls.length === 0) {
+    return { success: false, platform: 'Instagram', error: 'At least one image is required for Instagram.' };
+  }
+
+  const caption = `${property.title}\n\n${property.description}\n\nPrice: ₹${property.price.toLocaleString()}\nLocation: ${property.city}, ${property.state}\n\n#realestate #${property.city.replace(/\s+/g, '')} #${property.property_type} #propertyforsale`;
+  
+  try {
+    // 1. Upload media items and get container IDs
+    const containerIds: string[] = [];
+    for (const imageUrl of imageUrls) {
+      const uploadResponse = await fetch(`${BASE_GRAPH_URL}/${igUserId}/media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image_url: imageUrl,
+          caption: caption, // Caption is needed here for single image posts
+          access_token: accessToken,
+        }),
+      });
+      const uploadResult = await uploadResponse.json() as { id?: string; error?: any };
+      if (!uploadResponse.ok || !uploadResult.id) {
+          throw new Error(`Failed to upload to Instagram container: ${uploadResult.error?.message || 'Unknown error'}`);
+      }
+      containerIds.push(uploadResult.id);
+    }
+    
+    let finalContainerId: string;
+    // 2. If more than one image, create a carousel container
+    if (containerIds.length > 1) {
+        const carouselResponse = await fetch(`${BASE_GRAPH_URL}/${igUserId}/media`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                media_type: 'CAROUSEL',
+                caption: caption,
+                children: containerIds,
+                access_token: accessToken,
+            }),
+        });
+        const carouselResult = await carouselResponse.json() as { id?: string; error?: any };
+         if (!carouselResponse.ok || !carouselResult.id) {
+            throw new Error(`Failed to create Instagram carousel container: ${carouselResult.error?.message || 'Unknown error'}`);
+        }
+        finalContainerId = carouselResult.id;
+    } else {
+        finalContainerId = containerIds[0];
+    }
+
+    // 3. Publish the container
+    const publishResponse = await fetch(`${BASE_GRAPH_URL}/${igUserId}/media_publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            creation_id: finalContainerId,
+            access_token: accessToken,
+        }),
+    });
+    
+    const publishResult = await publishResponse.json() as { id?: string; error?: any };
+    if (!publishResponse.ok || !publishResult.id) {
+        throw new Error(`Failed to publish to Instagram: ${publishResult.error?.message || 'Unknown error'}`);
+    }
+
+    // The ID returned here is a media ID, not a post ID. We need another call to get the permalink.
+    const permalinkResponse = await fetch(`${BASE_GRAPH_URL}/${publishResult.id}?fields=permalink&access_token=${accessToken}`);
+    const permalinkResult = await permalinkResponse.json() as { permalink?: string };
+    
+    return { success: true, platform: 'Instagram', postUrl: permalinkResult.permalink || `https://www.instagram.com/p/${publishResult.id}` };
+
+  } catch (error: any) {
+    console.error('[Instagram Sharing Error]', error);
+    return { success: false, platform: 'Instagram', error: error.message };
+  }
+}
+
+// Placeholder functions for platforms not yet implemented
 async function shareTo99acres(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
-  console.log(`Attempting to share to 99acres with ${imageUrls?.length || 0} images...`, property.title);
-  // In a real implementation, you would use the 99acres API here.
-  // This is a placeholder that simulates success.
-  const listingUrl = `https://www.99acres.com/property-in-${property.city.toLowerCase().replace(/\s+/g, '-')}-${property.id}`;
+  console.log(`SIMULATING share to 99acres for "${property.title}" with ${imageUrls?.length || 0} images.`);
+  const listingUrl = `https://www.99acres.com/property-in-${property.city.toLowerCase().replace(/\s+/g, '-')}-i${Math.floor(Math.random() * 100000)}`;
   return { success: true, platform: '99acres', postUrl: listingUrl };
 }
 
 async function shareToOlx(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
-  console.log(`Attempting to share to OLX with ${imageUrls?.length || 0} images...`, property.title);
-  // In a real implementation, you would use the OLX API here.
-  const listingUrl = `https://www.olx.in/item/${property.title.toLowerCase().replace(/\s+/g, '-')}-iid-12345${property.id}`;
+  console.log(`SIMULATING share to OLX for "${property.title}" with ${imageUrls?.length || 0} images.`);
+  const listingUrl = `https://www.olx.in/item/${property.title.toLowerCase().replace(/\s+/g, '-')}-iid-${Math.floor(Math.random() * 10000000)}`;
   return { success: true, platform: 'OLX', postUrl: listingUrl };
-}
-
-async function postToInstagram(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
-  console.log(`Attempting to post to Instagram with ${imageUrls?.length || 0} images...`, property.title);
-  
-  if (!imageUrls || imageUrls.length === 0) {
-    return { success: false, platform: 'Instagram', error: 'At least one image is required for Instagram.' };
-  }
-  
-  // REAL IMPLEMENTATION WOULD GO HERE:
-  // 1. Use the Instagram Graph API to create a container for each image.
-  // 2. Create a carousel container with all the image containers.
-  // 3. Publish the carousel container to the user's feed.
-  
-  // Placeholder logic:
-  const postId = `Cq_Z_${Math.random().toString(36).substring(2, 10)}`;
-  const postUrl = `https://www.instagram.com/p/${postId}/`;
-  console.log(`Simulated Instagram post created: ${postUrl}`);
-
-  return { success: true, platform: 'Instagram', postUrl };
-}
-
-async function postToFacebook(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
-    console.log(`Attempting to post to Facebook with ${imageUrls?.length || 0} images...`, property.title);
-
-    if (!imageUrls || imageUrls.length === 0) {
-        return { success: false, platform: 'Facebook', error: 'At least one image is required for Facebook.' };
-    }
-
-    const pageId = process.env.FACEBOOK_PAGE_ID;
-    if (!pageId) {
-        return { success: false, platform: 'Facebook', error: 'Facebook Page ID is not configured.' };
-    }
-
-    // REAL IMPLEMENTATION WOULD GO HERE:
-    // 1. Use the Facebook Graph API to upload each photo.
-    // 2. Create a post on the page feed, attaching the IDs of the uploaded photos.
-    
-    // Placeholder logic:
-    const postId = `8765432109_${Math.random().toString(36).substring(2, 15)}`;
-    const postUrl = `https://www.facebook.com/${pageId}/posts/${postId}`;
-    console.log(`Simulated Facebook post created: ${postUrl}`);
-
-    return { success: true, platform: 'Facebook', postUrl };
 }
 
 
@@ -110,13 +205,13 @@ export async function saveProperty(
 
   const rawData = Object.fromEntries(formData.entries());
   
-  // Handle numeric conversions explicitly for validation
   const validatedFields = propertySchema.safeParse({
     ...rawData,
     price: rawData.price ? Number(rawData.price) : undefined,
     bedrooms: rawData.bedrooms ? Number(rawData.bedrooms) : undefined,
     bathrooms: rawData.bathrooms ? Number(rawData.bathrooms) : undefined,
     area_sqft: rawData.area_sqft ? Number(rawData.area_sqft) : undefined,
+    property_type: rawData.property_type || 'Residential',
   });
 
   if (!validatedFields.success) {
@@ -133,7 +228,6 @@ export async function saveProperty(
 
   try {
     if (propertyId) {
-      // Update existing property
       const { data, error } = await supabase
         .from('properties')
         .update({ ...validatedFields.data, updated_at: new Date().toISOString() })
@@ -143,7 +237,6 @@ export async function saveProperty(
       if (error) throw error;
       savedProperty = data;
     } else {
-      // Create new property
       const { data, error } = await supabase
         .from('properties')
         .insert({
@@ -161,7 +254,6 @@ export async function saveProperty(
       throw new Error('Failed to save property details.');
     }
     
-    // Handle file uploads
     if (files.length > 0 && files[0].size > 0) {
       for (const file of files) {
         const filePath = `${user.id}/property_media/${savedProperty.id}/${Date.now()}-${file.name}`;
@@ -186,7 +278,6 @@ export async function saveProperty(
       }
     }
 
-    // --- CONDITIONAL SHARING & SAVING URLS (ON CREATION ONLY) ---
     if (!propertyId && savedProperty && platformsToShare.length > 0) {
       console.log(`Property created. Sharing to: ${platformsToShare.join(', ')}`);
       
@@ -198,7 +289,6 @@ export async function saveProperty(
       if (platformsToShare.includes('instagram')) sharingPromises.push(postToInstagram(savedProperty, imageUrls));
       if (platformsToShare.includes('facebook')) sharingPromises.push(postToFacebook(savedProperty, imageUrls));
       
-      // Process results in the background
       Promise.allSettled(sharingPromises).then(async (results) => {
           console.log('--- Social Sharing Complete ---');
           const sharesToSave = [];
@@ -247,7 +337,3 @@ export async function saveProperty(
     message: propertyId ? 'Property updated successfully!' : 'Property created and sharing has started!',
   };
 }
-
-    
-
-    
