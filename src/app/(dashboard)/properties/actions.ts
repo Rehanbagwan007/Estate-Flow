@@ -35,36 +35,46 @@ async function getPropertyImageUrls(supabase: any, propertyId: string): Promise<
 }
 
 // --- SIMULATED API Functions ---
+const generateRandomId = (length = 16) => {
+    return Math.random().toString(36).substring(2, length + 2);
+}
+
 
 async function postToFacebook(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
   console.log(`--- SIMULATING share to Facebook for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
-  // Use a valid base URL to avoid broken links
-  const postUrl = `https://www.facebook.com/`;
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Generate a realistic-looking but fake permalink
+  const fakeStoryId = `pfbid0${generateRandomId(55)}`;
+  const fakePageId = `1000${Math.floor(Math.random() * 100000000000)}`;
+  const postUrl = `https://www.facebook.com/permalink.php?story_fbid=${fakeStoryId}&id=${fakePageId}`;
+  await new Promise(resolve => setTimeout(resolve, 1200)); 
   return { success: true, platform: 'Facebook', postUrl };
 }
 
 async function postToInstagram(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
   console.log(`--- SIMULATING share to Instagram for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
-  // Use a valid base URL to avoid broken links
-  const postUrl = `https://www.instagram.com/`;
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Generate a realistic-looking but fake post URL
+  const fakePostId = `C${generateRandomId(10)}`;
+  const postUrl = `https://www.instagram.com/p/${fakePostId}/`;
+  await new Promise(resolve => setTimeout(resolve, 1500)); 
   return { success: true, platform: 'Instagram', postUrl };
 }
 
 async function shareTo99acres(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
   console.log(`--- SIMULATING share to 99acres for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
-  // Use a valid base URL to avoid broken links
-  const listingUrl = `https://www.99acres.com/`;
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Generate a realistic-looking but fake listing URL
+  const fakeListingId = Math.floor(Math.random() * 10000000);
+  const citySlug = property.city.toLowerCase().replace(/\s+/g, '-');
+  const listingUrl = `https://www.99acres.com/${property.title.toLowerCase().replace(/\s+/g, '-')}-in-${citySlug}-noida-r${fakeListingId}`;
+  await new Promise(resolve => setTimeout(resolve, 800));
   return { success: true, platform: '99acres', postUrl: listingUrl };
 }
 
 async function shareToOlx(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
   console.log(`--- SIMULATING share to OLX for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
-  // Use a valid base URL to avoid broken links
-  const listingUrl = `https://www.olx.in/`;
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Generate a realistic-looking but fake listing URL
+  const fakeListingId = `iid-${Math.floor(Math.random() * 1000000000)}`;
+  const listingUrl = `https://www.olx.in/item/${fakeListingId}`;
+  await new Promise(resolve => setTimeout(resolve, 900));
   return { success: true, platform: 'OLX', postUrl: listingUrl };
 }
 
