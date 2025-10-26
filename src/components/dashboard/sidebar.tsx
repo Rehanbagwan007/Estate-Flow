@@ -25,6 +25,7 @@ import { Logo } from '@/components/icons/logo';
 import type { UserRole } from '@/lib/types';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useLeadStore } from '@/lib/store/lead-store';
 
 interface SidebarProps {
   userRole: UserRole;
@@ -32,6 +33,8 @@ interface SidebarProps {
 
 export function Sidebar({ userRole }: SidebarProps) {
   const pathname = usePathname();
+  const leads = useLeadStore((state) => state.leads);
+  const pendingLeadsCount = leads.filter(lead => lead.status === 'Warm').length;
 
   const navItems = [
     // Common items
@@ -51,7 +54,7 @@ export function Sidebar({ userRole }: SidebarProps) {
     { href: '/properties/new', label: 'Add Property', icon: Building, roles: ['super_admin', 'admin', 'agent'] },
     
     // Leads (Admin, Agent, Sales roles)
-    { href: '/leads', label: 'Leads', icon: Users, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
+    { href: '/leads', label: 'Leads', icon: Users, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'], badge: pendingLeadsCount },
     
     // Tasks (Admin, Agent, Sales roles)
     { href: '/tasks', label: 'Tasks', icon: ListTodo, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
@@ -93,7 +96,7 @@ export function Sidebar({ userRole }: SidebarProps) {
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
             {navItems
               .filter(item => item.roles.includes(userRole))
-              .map(({ href, label, icon: Icon }) => (
+              .map(({ href, label, icon: Icon, badge }) => (
                 <Link
                   key={label}
                   href={href}
@@ -104,9 +107,9 @@ export function Sidebar({ userRole }: SidebarProps) {
                 >
                   <Icon className="h-4 w-4" />
                   {label}
-                  {label === 'Leads' && (
+                  {badge !== undefined && badge > 0 && (
                      <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
-                       6
+                       {badge}
                      </Badge>
                   )}
                 </Link>
