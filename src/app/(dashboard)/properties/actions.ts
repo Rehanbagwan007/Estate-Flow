@@ -63,19 +63,8 @@ async function postToFacebook(property: Property, imageUrls: string[] | null): P
         // Step 2: Upload photos and get their IDs using the Page Access Token
         const attachedMedia: { media_fbid: string }[] = [];
         for (const imageUrl of imageUrls) {
-            const uploadUrl = new URL(`${BASE_GRAPH_URL}/${pageId}/photos`);
-            const uploadParams = new URLSearchParams({
-                url: imageUrl,
-                published: 'false',
-            });
-            
-            const uploadResponse = await fetch(uploadUrl.toString(), {
+            const uploadResponse = await fetch(`${BASE_GRAPH_URL}/${pageId}/photos?url=${encodeURIComponent(imageUrl)}&published=false&access_token=${pageAccessToken}`, {
                 method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${pageAccessToken}`,
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: uploadParams,
             });
 
             const uploadResult = await uploadResponse.json() as { id?: string; error?: any };
@@ -131,16 +120,8 @@ async function postToInstagram(property: Property, imageUrls: string[] | null): 
 
         if (imageUrls.length === 1) {
             // Single image post
-            const containerUrl = new URL(`${BASE_GRAPH_URL}/${igAccountId}/media`);
-            const containerParams = new URLSearchParams({
-                image_url: imageUrls[0],
-                caption: caption,
-            });
-
-            const containerResponse = await fetch(containerUrl.toString(), {
+            const containerResponse = await fetch(`${BASE_GRAPH_URL}/${igAccountId}/media?image_url=${encodeURIComponent(imageUrls[0])}&caption=${encodeURIComponent(caption)}&access_token=${accessToken}`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: containerParams,
             });
 
             const containerResult = await containerResponse.json() as { id?: string; error?: any };
@@ -151,15 +132,9 @@ async function postToInstagram(property: Property, imageUrls: string[] | null): 
             // Carousel post (2 or more images)
             const childContainerIds: string[] = [];
             for (const imageUrl of imageUrls) {
-                const itemContainerUrl = new URL(`${BASE_GRAPH_URL}/${igAccountId}/media`);
-                const itemContainerParams = new URLSearchParams({ image_url: imageUrl });
-                
-                const itemContainerResponse = await fetch(itemContainerUrl.toString(), {
+                const itemContainerResponse = await fetch(`${BASE_GRAPH_URL}/${igAccountId}/media?image_url=${encodeURIComponent(imageUrl)}&access_token=${accessToken}`, {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: itemContainerParams,
                 });
-
                 const itemContainerResult = await itemContainerResponse.json() as { id?: string; error?: any };
                 if (itemContainerResult.id) {
                     childContainerIds.push(itemContainerResult.id);
@@ -172,17 +147,8 @@ async function postToInstagram(property: Property, imageUrls: string[] | null): 
                 throw new Error("All photo uploads to Instagram failed at the container stage.");
             }
             
-            const carouselContainerUrl = new URL(`${BASE_GRAPH_URL}/${igAccountId}/media`);
-            const carouselContainerParams = new URLSearchParams({
-                media_type: 'CAROUSEL',
-                caption: caption,
-                children: childContainerIds.join(','),
-            });
-
-            const carouselContainerResponse = await fetch(carouselContainerUrl.toString(), {
+            const carouselContainerResponse = await fetch(`${BASE_GRAPH_URL}/${igAccountId}/media?media_type=CAROUSEL&caption=${encodeURIComponent(caption)}&children=${childContainerIds.join(',')}&access_token=${accessToken}`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: carouselContainerParams,
             });
             const carouselContainerResult = await carouselContainerResponse.json() as { id?: string; error?: any };
             if (carouselContainerResult.error) throw new Error(`Failed to create carousel container: ${carouselContainerResult.error.message}`);
@@ -191,13 +157,8 @@ async function postToInstagram(property: Property, imageUrls: string[] | null): 
         }
 
         // Publish the final container
-        const publishUrl = new URL(`${BASE_GRAPH_URL}/${igAccountId}/media_publish`);
-        const publishParams = new URLSearchParams({ creation_id: finalMediaId });
-
-        const publishResponse = await fetch(publishUrl.toString(), {
+        const publishResponse = await fetch(`${BASE_GRAPH_URL}/${igAccountId}/media_publish?creation_id=${finalMediaId}&access_token=${accessToken}`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: publishParams,
         });
         const publishResult = await publishResponse.json() as { id?: string; error?: any };
 
