@@ -38,32 +38,32 @@ async function getPropertyImageUrls(supabase: any, propertyId: string): Promise<
 
 async function postToFacebook(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
   console.log(`--- SIMULATING share to Facebook for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
-  const postUrl = `https://www.facebook.com/permalink.php?story_fbid=pfbid0${Math.random().toString(36).substring(2)}&id=${Math.floor(Math.random() * 1000000000000)}`;
-  // Simulate a 1-second delay
+  // Use a valid base URL to avoid broken links
+  const postUrl = `https://www.facebook.com/`;
   await new Promise(resolve => setTimeout(resolve, 1000));
   return { success: true, platform: 'Facebook', postUrl };
 }
 
 async function postToInstagram(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
   console.log(`--- SIMULATING share to Instagram for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
-  const postUrl = `https://www.instagram.com/p/C${Math.random().toString(36).substring(2)}/`;
-   // Simulate a 1-second delay
+  // Use a valid base URL to avoid broken links
+  const postUrl = `https://www.instagram.com/`;
   await new Promise(resolve => setTimeout(resolve, 1000));
   return { success: true, platform: 'Instagram', postUrl };
 }
 
 async function shareTo99acres(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
   console.log(`--- SIMULATING share to 99acres for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
-  const listingUrl = `https://www.99acres.com/property-in-${property.city.toLowerCase().replace(/\s+/g, '-')}-i${Math.floor(Math.random() * 100000)}`;
-   // Simulate a 1-second delay
+  // Use a valid base URL to avoid broken links
+  const listingUrl = `https://www.99acres.com/`;
   await new Promise(resolve => setTimeout(resolve, 1000));
   return { success: true, platform: '99acres', postUrl: listingUrl };
 }
 
 async function shareToOlx(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
   console.log(`--- SIMULATING share to OLX for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
-  const listingUrl = `https://www.olx.in/item/${property.title.toLowerCase().replace(/\s+/g, '-')}-iid-${Math.floor(Math.random() * 10000000)}`;
-   // Simulate a 1-second delay
+  // Use a valid base URL to avoid broken links
+  const listingUrl = `https://www.olx.in/`;
   await new Promise(resolve => setTimeout(resolve, 1000));
   return { success: true, platform: 'OLX', postUrl: listingUrl };
 }
