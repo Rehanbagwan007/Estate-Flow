@@ -36,34 +36,60 @@ async function getPropertyImageUrls(supabase: any, propertyId: string): Promise<
 
 async function shareTo99acres(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
   console.log(`Attempting to share to 99acres with ${imageUrls?.length || 0} images...`, property.title);
-  const listingUrl = `https://www.99acres.com/property-in-${property.city.toLowerCase()}-${property.id}`;
+  // In a real implementation, you would use the 99acres API here.
+  // This is a placeholder that simulates success.
+  const listingUrl = `https://www.99acres.com/property-in-${property.city.toLowerCase().replace(/\s+/g, '-')}-${property.id}`;
   return { success: true, platform: '99acres', postUrl: listingUrl };
 }
 
 async function shareToOlx(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
   console.log(`Attempting to share to OLX with ${imageUrls?.length || 0} images...`, property.title);
+  // In a real implementation, you would use the OLX API here.
   const listingUrl = `https://www.olx.in/item/${property.title.toLowerCase().replace(/\s+/g, '-')}-iid-12345${property.id}`;
   return { success: true, platform: 'OLX', postUrl: listingUrl };
 }
 
 async function postToInstagram(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
   console.log(`Attempting to post to Instagram with ${imageUrls?.length || 0} images...`, property.title);
+  
   if (!imageUrls || imageUrls.length === 0) {
     return { success: false, platform: 'Instagram', error: 'At least one image is required for Instagram.' };
   }
+  
+  // REAL IMPLEMENTATION WOULD GO HERE:
+  // 1. Use the Instagram Graph API to create a container for each image.
+  // 2. Create a carousel container with all the image containers.
+  // 3. Publish the carousel container to the user's feed.
+  
+  // Placeholder logic:
   const postId = `Cq_Z_${Math.random().toString(36).substring(2, 10)}`;
   const postUrl = `https://www.instagram.com/p/${postId}/`;
+  console.log(`Simulated Instagram post created: ${postUrl}`);
+
   return { success: true, platform: 'Instagram', postUrl };
 }
 
 async function postToFacebook(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
     console.log(`Attempting to post to Facebook with ${imageUrls?.length || 0} images...`, property.title);
+
     if (!imageUrls || imageUrls.length === 0) {
         return { success: false, platform: 'Facebook', error: 'At least one image is required for Facebook.' };
     }
-    const pageId = process.env.FACEBOOK_PAGE_ID || '1234567890';
-    const postId = `8765432109`;
+
+    const pageId = process.env.FACEBOOK_PAGE_ID;
+    if (!pageId) {
+        return { success: false, platform: 'Facebook', error: 'Facebook Page ID is not configured.' };
+    }
+
+    // REAL IMPLEMENTATION WOULD GO HERE:
+    // 1. Use the Facebook Graph API to upload each photo.
+    // 2. Create a post on the page feed, attaching the IDs of the uploaded photos.
+    
+    // Placeholder logic:
+    const postId = `8765432109_${Math.random().toString(36).substring(2, 15)}`;
     const postUrl = `https://www.facebook.com/${pageId}/posts/${postId}`;
+    console.log(`Simulated Facebook post created: ${postUrl}`);
+
     return { success: true, platform: 'Facebook', postUrl };
 }
 
@@ -221,5 +247,7 @@ export async function saveProperty(
     message: propertyId ? 'Property updated successfully!' : 'Property created and sharing has started!',
   };
 }
+
+    
 
     
