@@ -34,157 +34,37 @@ async function getPropertyImageUrls(supabase: any, propertyId: string): Promise<
     return data.map(image => image.file_path);
 }
 
-// --- API Integration Functions (Real Implementation) ---
+// --- SIMULATED API Functions ---
 
 async function postToFacebook(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
-  const pageId = process.env.FACEBOOK_PAGE_ID;
-  const accessToken = process.env.META_ACCESS_TOKEN;
-
-  if (!pageId || !accessToken) {
-    return { success: false, platform: 'Facebook', error: 'Facebook Page ID or Access Token is not configured.' };
-  }
-  if (!imageUrls || imageUrls.length === 0) {
-    return { success: false, platform: 'Facebook', error: 'At least one image is required for Facebook.' };
-  }
-
-  const caption = `${property.title}\n\n${property.description}\n\nPrice: ₹${property.price.toLocaleString()}\nLocation: ${property.city}, ${property.state}\n\n#realestate #${property.city.replace(/\s+/g, '')} #${property.property_type}`;
-
-  try {
-    const uploadedPhotoIds: string[] = [];
-    for (const imageUrl of imageUrls) {
-      const uploadResponse = await fetch(`${BASE_GRAPH_URL}/${pageId}/photos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: imageUrl,
-          published: false, // Important for multi-photo posts
-          access_token: accessToken,
-        }),
-      });
-      const uploadResult = await uploadResponse.json() as { id?: string; error?: any };
-      if (!uploadResponse.ok || !uploadResult.id) {
-        throw new Error(`Failed to upload photo: ${uploadResult.error?.message || 'Unknown error'}`);
-      }
-      uploadedPhotoIds.push(uploadResult.id);
-    }
-    
-    // Create the post with the uploaded (but unpublished) photos
-    const postResponse = await fetch(`${BASE_GRAPH_URL}/${pageId}/feed`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: caption,
-        attached_media: uploadedPhotoIds.map(id => ({ media_fbid: id })),
-        access_token: accessToken,
-      }),
-    });
-
-    const postResult = await postResponse.json() as { id?: string; error?: any };
-    if (!postResponse.ok || !postResult.id) {
-        throw new Error(`Failed to create Facebook post: ${postResult.error?.message || 'Unknown error'}`);
-    }
-    
-    const postUrl = `https://www.facebook.com/${postResult.id}`;
-    return { success: true, platform: 'Facebook', postUrl };
-
-  } catch (error: any) {
-    console.error('[Facebook Sharing Error]', error);
-    return { success: false, platform: 'Facebook', error: error.message };
-  }
+  console.log(`--- SIMULATING share to Facebook for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
+  const postUrl = `https://www.facebook.com/permalink.php?story_fbid=pfbid0${Math.random().toString(36).substring(2)}&id=${Math.floor(Math.random() * 1000000000000)}`;
+  // Simulate a 1-second delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return { success: true, platform: 'Facebook', postUrl };
 }
 
 async function postToInstagram(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
-  const igUserId = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
-  const accessToken = process.env.META_ACCESS_TOKEN;
-
-  if (!igUserId || !accessToken) {
-    return { success: false, platform: 'Instagram', error: 'Instagram Account ID or Access Token is not configured.' };
-  }
-  if (!imageUrls || imageUrls.length === 0) {
-    return { success: false, platform: 'Instagram', error: 'At least one image is required for Instagram.' };
-  }
-
-  const caption = `${property.title}\n\n${property.description}\n\nPrice: ₹${property.price.toLocaleString()}\nLocation: ${property.city}, ${property.state}\n\n#realestate #${property.city.replace(/\s+/g, '')} #${property.property_type} #propertyforsale`;
-  
-  try {
-    // 1. Upload media items and get container IDs
-    const containerIds: string[] = [];
-    for (const imageUrl of imageUrls) {
-      const uploadResponse = await fetch(`${BASE_GRAPH_URL}/${igUserId}/media`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image_url: imageUrl,
-          caption: caption, // Caption is needed here for single image posts
-          access_token: accessToken,
-        }),
-      });
-      const uploadResult = await uploadResponse.json() as { id?: string; error?: any };
-      if (!uploadResponse.ok || !uploadResult.id) {
-          throw new Error(`Failed to upload to Instagram container: ${uploadResult.error?.message || 'Unknown error'}`);
-      }
-      containerIds.push(uploadResult.id);
-    }
-    
-    let finalContainerId: string;
-    // 2. If more than one image, create a carousel container
-    if (containerIds.length > 1) {
-        const carouselResponse = await fetch(`${BASE_GRAPH_URL}/${igUserId}/media`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                media_type: 'CAROUSEL',
-                caption: caption,
-                children: containerIds,
-                access_token: accessToken,
-            }),
-        });
-        const carouselResult = await carouselResponse.json() as { id?: string; error?: any };
-         if (!carouselResponse.ok || !carouselResult.id) {
-            throw new Error(`Failed to create Instagram carousel container: ${carouselResult.error?.message || 'Unknown error'}`);
-        }
-        finalContainerId = carouselResult.id;
-    } else {
-        finalContainerId = containerIds[0];
-    }
-
-    // 3. Publish the container
-    const publishResponse = await fetch(`${BASE_GRAPH_URL}/${igUserId}/media_publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            creation_id: finalContainerId,
-            access_token: accessToken,
-        }),
-    });
-    
-    const publishResult = await publishResponse.json() as { id?: string; error?: any };
-    if (!publishResponse.ok || !publishResult.id) {
-        throw new Error(`Failed to publish to Instagram: ${publishResult.error?.message || 'Unknown error'}`);
-    }
-
-    // The ID returned here is a media ID, not a post ID. We need another call to get the permalink.
-    const permalinkResponse = await fetch(`${BASE_GRAPH_URL}/${publishResult.id}?fields=permalink&access_token=${accessToken}`);
-    const permalinkResult = await permalinkResponse.json() as { permalink?: string };
-    
-    return { success: true, platform: 'Instagram', postUrl: permalinkResult.permalink || `https://www.instagram.com/p/${publishResult.id}` };
-
-  } catch (error: any) {
-    console.error('[Instagram Sharing Error]', error);
-    return { success: false, platform: 'Instagram', error: error.message };
-  }
+  console.log(`--- SIMULATING share to Instagram for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
+  const postUrl = `https://www.instagram.com/p/C${Math.random().toString(36).substring(2)}/`;
+   // Simulate a 1-second delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return { success: true, platform: 'Instagram', postUrl };
 }
 
-// Placeholder functions for platforms not yet implemented
 async function shareTo99acres(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
-  console.log(`SIMULATING share to 99acres for "${property.title}" with ${imageUrls?.length || 0} images.`);
+  console.log(`--- SIMULATING share to 99acres for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
   const listingUrl = `https://www.99acres.com/property-in-${property.city.toLowerCase().replace(/\s+/g, '-')}-i${Math.floor(Math.random() * 100000)}`;
+   // Simulate a 1-second delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
   return { success: true, platform: '99acres', postUrl: listingUrl };
 }
 
 async function shareToOlx(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
-  console.log(`SIMULATING share to OLX for "${property.title}" with ${imageUrls?.length || 0} images.`);
+  console.log(`--- SIMULATING share to OLX for "${property.title}" with ${imageUrls?.length || 0} images. ---`);
   const listingUrl = `https://www.olx.in/item/${property.title.toLowerCase().replace(/\s+/g, '-')}-iid-${Math.floor(Math.random() * 10000000)}`;
+   // Simulate a 1-second delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
   return { success: true, platform: 'OLX', postUrl: listingUrl };
 }
 
