@@ -63,7 +63,6 @@ async function postToFacebook(property: Property, imageUrls: string[] | null): P
         // Step 2: Upload photos and get their IDs using the Page Access Token
         const attachedMedia: { media_fbid: string }[] = [];
         for (const imageUrl of imageUrls) {
-            // Important: Use the pageAccessToken now
             const uploadResponse = await fetch(`${BASE_GRAPH_URL}/${pageId}/photos?url=${encodeURIComponent(imageUrl)}&published=false`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${pageAccessToken}` },
@@ -108,13 +107,84 @@ async function postToInstagram(property: Property, imageUrls: string[] | null): 
     const accessToken = process.env.META_ACCESS_TOKEN;
 
     if (!igAccountId || !accessToken) {
-        console.log("Skipping Instagram post: Instagram Business Account ID or Access Token is not configured.");
-        return { success: false, platform: 'Instagram', error: 'Instagram is not configured.' };
+        return { success: false, platform: 'Instagram', error: 'Instagram Business Account ID or Access Token is not configured.' };
     }
-     // For now, this remains a simulation until the user provides the ID.
-    const fakePostId = `C${Math.random().toString(36).substring(2, 12)}`;
-    return { success: true, platform: 'Instagram', postUrl: `https://www.instagram.com/p/${fakePostId}/` };
+    if (!imageUrls || imageUrls.length === 0) {
+        return { success: false, platform: 'Instagram', error: 'At least one image is required to post to Instagram.' };
+    }
+
+    try {
+        const caption = `${property.title}\n\n${property.description || ''}\n\nPrice: ₹${property.price.toLocaleString()}\nLocation: ${property.city}, ${property.state}\n\n#realestate #${property.city.replace(/\s+/g, '')} #${property.property_type?.replace(/\s+/g, '').toLowerCase()}`;
+
+        let finalMediaId;
+
+        if (imageUrls.length === 1) {
+            // Single image post
+            const containerUrl = `${BASE_GRAPH_URL}/${igAccountId}/media?image_url=${encodeURIComponent(imageUrls[0])}&caption=${encodeURIComponent(caption)}`;
+            const containerResponse = await fetch(containerUrl, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            const containerResult = await containerResponse.json() as { id?: string; error?: any };
+            if (containerResult.error) throw new Error(`Failed to create single media container: ${containerResult.error.message}`);
+            
+            finalMediaId = containerResult.id;
+        } else {
+            // Carousel post (2 or more images)
+            const childContainerIds: string[] = [];
+            for (const imageUrl of imageUrls) {
+                const itemContainerUrl = `${BASE_GRAPH_URL}/${igAccountId}/media?image_url=${encodeURIComponent(imageUrl)}`;
+                const itemContainerResponse = await fetch(itemContainerUrl, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}` },
+                });
+                const itemContainerResult = await itemContainerResponse.json() as { id?: string; error?: any };
+                if (itemContainerResult.id) {
+                    childContainerIds.push(itemContainerResult.id);
+                } else {
+                    console.error(`Instagram item container creation failed for ${imageUrl}:`, itemContainerResult.error);
+                }
+            }
+
+            if (childContainerIds.length === 0) {
+                throw new Error("All photo uploads to Instagram failed at the container stage.");
+            }
+
+            const carouselContainerUrl = `${BASE_GRAPH_URL}/${igAccountId}/media?media_type=CAROUSEL&caption=${encodeURIComponent(caption)}&children=${childContainerIds.join(',')}`;
+            const carouselContainerResponse = await fetch(carouselContainerUrl, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            const carouselContainerResult = await carouselContainerResponse.json() as { id?: string; error?: any };
+            if (carouselContainerResult.error) throw new Error(`Failed to create carousel container: ${carouselContainerResult.error.message}`);
+            
+            finalMediaId = carouselContainerResult.id;
+        }
+
+        // Publish the final container
+        const publishUrl = `${BASE_GRAPH_URL}/${igAccountId}/media_publish?creation_id=${finalMediaId}`;
+        const publishResponse = await fetch(publishUrl, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${accessToken}` },
+        });
+        const publishResult = await publishResponse.json() as { id?: string; error?: any };
+
+        if (publishResult.error) {
+            throw new Error(`Failed to publish media to Instagram: ${publishResult.error.message}`);
+        }
+        
+        // We can't get the post URL directly, but we can construct it from the permalink
+        const permalinkResponse = await fetch(`${BASE_GRAPH_URL}/${publishResult.id}?fields=permalink&access_token=${accessToken}`);
+        const permalinkData = await permalinkResponse.json() as { permalink?: string; error?: any};
+
+        return { success: true, platform: 'Instagram', postUrl: permalinkData.permalink || 'https://www.instagram.com/' };
+
+    } catch (error: any) {
+        console.error('Error posting to Instagram:', error);
+        return { success: false, platform: 'Instagram', error: error.message };
+    }
 }
+
 
 // --- SIMULATED API Functions ---
 const generateRandomId = (length = 16) => {
@@ -123,9 +193,9 @@ const generateRandomId = (length = 16) => {
 
 async function shareTo99acres(property: Property): Promise<MediaUploadResult> {
   console.log(`--- SIMULATING share to 99acres for "${property.title}" ---`);
-  const fakeListingId = Math.floor(Math.random() * 10000000);
+  const fakeListingId = `p${Math.floor(Math.random() * 10000000)}`;
   const citySlug = property.city.toLowerCase().replace(/\s+/g, '-');
-  const listingUrl = `https://www.99acres.com/${property.title.toLowerCase().replace(/\s+/g, '-')}-in-${citySlug}-noida-r${fakeListingId}`;
+  const listingUrl = `https://www.99acres.com/${fakeListingId}-${property.title.toLowerCase().replace(/\s+/g, '-')}-in-${citySlug}`;
   await new Promise(resolve => setTimeout(resolve, 800));
   return { success: true, platform: '99acres', postUrl: listingUrl };
 }
