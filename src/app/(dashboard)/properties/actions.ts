@@ -63,10 +63,21 @@ async function postToFacebook(property: Property, imageUrls: string[] | null): P
         // Step 2: Upload photos and get their IDs using the Page Access Token
         const attachedMedia: { media_fbid: string }[] = [];
         for (const imageUrl of imageUrls) {
-            const uploadResponse = await fetch(`${BASE_GRAPH_URL}/${pageId}/photos?url=${encodeURIComponent(imageUrl)}&published=false`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${pageAccessToken}` },
+            const uploadUrl = new URL(`${BASE_GRAPH_URL}/${pageId}/photos`);
+            const uploadParams = new URLSearchParams({
+                url: imageUrl,
+                published: 'false',
             });
+            
+            const uploadResponse = await fetch(uploadUrl.toString(), {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${pageAccessToken}`,
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: uploadParams,
+            });
+
             const uploadResult = await uploadResponse.json() as { id?: string; error?: any };
             if (uploadResult.id) {
                 attachedMedia.push({ media_fbid: uploadResult.id });
@@ -120,11 +131,18 @@ async function postToInstagram(property: Property, imageUrls: string[] | null): 
 
         if (imageUrls.length === 1) {
             // Single image post
-            const containerUrl = `${BASE_GRAPH_URL}/${igAccountId}/media?image_url=${encodeURIComponent(imageUrls[0])}&caption=${encodeURIComponent(caption)}`;
-            const containerResponse = await fetch(containerUrl, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${accessToken}` },
+            const containerUrl = new URL(`${BASE_GRAPH_URL}/${igAccountId}/media`);
+            const containerParams = new URLSearchParams({
+                image_url: imageUrls[0],
+                caption: caption,
             });
+
+            const containerResponse = await fetch(containerUrl.toString(), {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: containerParams,
+            });
+
             const containerResult = await containerResponse.json() as { id?: string; error?: any };
             if (containerResult.error) throw new Error(`Failed to create single media container: ${containerResult.error.message}`);
             
@@ -133,11 +151,15 @@ async function postToInstagram(property: Property, imageUrls: string[] | null): 
             // Carousel post (2 or more images)
             const childContainerIds: string[] = [];
             for (const imageUrl of imageUrls) {
-                const itemContainerUrl = `${BASE_GRAPH_URL}/${igAccountId}/media?image_url=${encodeURIComponent(imageUrl)}`;
-                const itemContainerResponse = await fetch(itemContainerUrl, {
+                const itemContainerUrl = new URL(`${BASE_GRAPH_URL}/${igAccountId}/media`);
+                const itemContainerParams = new URLSearchParams({ image_url: imageUrl });
+                
+                const itemContainerResponse = await fetch(itemContainerUrl.toString(), {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${accessToken}` },
+                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: itemContainerParams,
                 });
+
                 const itemContainerResult = await itemContainerResponse.json() as { id?: string; error?: any };
                 if (itemContainerResult.id) {
                     childContainerIds.push(itemContainerResult.id);
@@ -149,11 +171,18 @@ async function postToInstagram(property: Property, imageUrls: string[] | null): 
             if (childContainerIds.length === 0) {
                 throw new Error("All photo uploads to Instagram failed at the container stage.");
             }
+            
+            const carouselContainerUrl = new URL(`${BASE_GRAPH_URL}/${igAccountId}/media`);
+            const carouselContainerParams = new URLSearchParams({
+                media_type: 'CAROUSEL',
+                caption: caption,
+                children: childContainerIds.join(','),
+            });
 
-            const carouselContainerUrl = `${BASE_GRAPH_URL}/${igAccountId}/media?media_type=CAROUSEL&caption=${encodeURIComponent(caption)}&children=${childContainerIds.join(',')}`;
-            const carouselContainerResponse = await fetch(carouselContainerUrl, {
+            const carouselContainerResponse = await fetch(carouselContainerUrl.toString(), {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${accessToken}` },
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: carouselContainerParams,
             });
             const carouselContainerResult = await carouselContainerResponse.json() as { id?: string; error?: any };
             if (carouselContainerResult.error) throw new Error(`Failed to create carousel container: ${carouselContainerResult.error.message}`);
@@ -162,10 +191,13 @@ async function postToInstagram(property: Property, imageUrls: string[] | null): 
         }
 
         // Publish the final container
-        const publishUrl = `${BASE_GRAPH_URL}/${igAccountId}/media_publish?creation_id=${finalMediaId}`;
-        const publishResponse = await fetch(publishUrl, {
+        const publishUrl = new URL(`${BASE_GRAPH_URL}/${igAccountId}/media_publish`);
+        const publishParams = new URLSearchParams({ creation_id: finalMediaId });
+
+        const publishResponse = await fetch(publishUrl.toString(), {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${accessToken}` },
+            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: publishParams,
         });
         const publishResult = await publishResponse.json() as { id?: string; error?: any };
 
