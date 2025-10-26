@@ -52,7 +52,6 @@ export function Sidebar({ userRole }: SidebarProps) {
     
     // Leads (Admin, Agent, Sales roles)
     { href: '/leads', label: 'Leads', icon: Users, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
-    { href: '/leads/new', label: 'Add Lead', icon: Users2, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
     
     // Tasks (Admin, Agent, Sales roles)
     { href: '/tasks', label: 'Tasks', icon: ListTodo, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
