@@ -66,6 +66,9 @@ export async function POST(request: NextRequest) {
 
     const exotelResponse = await response.json();
 
+
+    console.log(exotelResponse)
+
     // 3. Log the call initiation attempt in our database
     const callSid = exotelResponse.Call?.Sid;
     const callStatus = exotelResponse.Call?.Status || (exotelResponse.RestException ? 'failed' : 'initiated');
@@ -82,10 +85,12 @@ export async function POST(request: NextRequest) {
       })
       .select()
       .single();
+
     
     if (logError) {
         console.error('CRITICAL: Failed to log call after successful API request:', logError);
         // Don't block the user, but this needs monitoring
+
     }
 
     if (!response.ok || exotelResponse.RestException) {

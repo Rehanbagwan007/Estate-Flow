@@ -65,6 +65,8 @@ export async function createTask(
           .from('task_media')
           .upload(filePath, file);
 
+           console.log(filePath)
+
         if (uploadError) {
           console.error('Upload Error:', uploadError.message);
           // Even if one file fails, we can try to continue with others.
