@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { z } from 'zod';
@@ -38,9 +39,9 @@ async function getPropertyImageUrls(supabase: any, propertyId: string): Promise<
 
 async function postToFacebook(property: Property, imageUrls: string[] | null): Promise<MediaUploadResult> {
     const pageId = process.env.FACEBOOK_PAGE_ID;
-    const accessToken = process.env.META_ACCESS_TOKEN;
+    const userAccessToken = process.env.META_ACCESS_TOKEN;
 
-    if (!pageId || !accessToken) {
+    if (!pageId || !userAccessToken) {
         return { success: false, platform: 'Facebook', error: 'Facebook Page ID or Access Token is not configured.' };
     }
 
@@ -48,15 +49,24 @@ async function postToFacebook(property: Property, imageUrls: string[] | null): P
         return { success: false, platform: 'Facebook', error: 'At least one image is required to post to Facebook.' };
     }
 
-    const message = `${property.title}\n\n${property.description || ''}\n\nPrice: ₹${property.price.toLocaleString()}\nLocation: ${property.city}, ${property.state}\n\n#realestate #${property.city.replace(/\s+/g, '')} #${property.property_type}`;
-
     try {
-        // Step 1: Upload photos and get their IDs
+        // Step 1: Get the Page Access Token using the User Access Token
+        const pageTokenResponse = await fetch(`${BASE_GRAPH_URL}/${pageId}?fields=access_token&access_token=${userAccessToken}`);
+        const pageTokenData = await pageTokenResponse.json() as { access_token?: string; error?: any };
+        
+        if (pageTokenData.error || !pageTokenData.access_token) {
+             throw new Error(`Could not retrieve Page Access Token: ${pageTokenData.error?.message || 'Unknown error'}`);
+        }
+        const pageAccessToken = pageTokenData.access_token;
+        
+
+        // Step 2: Upload photos and get their IDs using the Page Access Token
         const attachedMedia: { media_fbid: string }[] = [];
         for (const imageUrl of imageUrls) {
+            // Important: Use the pageAccessToken now
             const uploadResponse = await fetch(`${BASE_GRAPH_URL}/${pageId}/photos?url=${encodeURIComponent(imageUrl)}&published=false`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${accessToken}` },
+                headers: { 'Authorization': `Bearer ${pageAccessToken}` },
             });
             const uploadResult = await uploadResponse.json() as { id?: string; error?: any };
             if (uploadResult.id) {
@@ -69,11 +79,14 @@ async function postToFacebook(property: Property, imageUrls: string[] | null): P
         if (attachedMedia.length === 0) {
           throw new Error("All photo uploads to Facebook failed.");
         }
+        
+        const message = `${property.title}\n\n${property.description || ''}\n\nPrice: ₹${property.price.toLocaleString()}\nLocation: ${property.city}, ${property.state}\n\n#realestate #${property.city.replace(/\s+/g, '')} #${property.property_type}`;
 
-        // Step 2: Create the post with the uploaded photos
+
+        // Step 3: Create the post with the uploaded photos using the Page Access Token
         const postResponse = await fetch(`${BASE_GRAPH_URL}/${pageId}/feed`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${pageAccessToken}` },
             body: JSON.stringify({ message, attached_media: attachedMedia }),
         });
 
