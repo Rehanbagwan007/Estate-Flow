@@ -16,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { login } from '@/app/(auth)/actions';
 import { useState, useTransition } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
@@ -25,6 +25,7 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const urlError = searchParams.get('message');
   const [formError, setFormError] = useState<string | null>(urlError);
+  const [showPassword, setShowPassword] = useState(false);
 
 
   const form = useForm<z.infer<typeof loginSchema>>({
@@ -81,14 +82,29 @@ export function LoginForm() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    type="password"
-                    placeholder="••••••••"
+                <div className="relative">
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      disabled={isPending}
+                      className="pr-10"
+                    />
+                  </FormControl>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
                     disabled={isPending}
-                  />
-                </FormControl>
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
