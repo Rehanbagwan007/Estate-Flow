@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -37,6 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, UploadCloud, X } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 interface PropertyFormProps {
   property?: Property;
@@ -56,6 +58,7 @@ const SHARING_PLATFORMS = [
 export function PropertyForm({ property }: PropertyFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -124,11 +127,15 @@ export function PropertyForm({ property }: PropertyFormProps) {
           description: result.message,
           variant: 'destructive',
         });
-      } else if (result?.success as string) {
+      } else if (result?.success) {
         toast({
           title: 'Success!',
           description: result.message,
         });
+        if (result.redirectUrl) {
+          router.push(result.redirectUrl);
+          router.refresh();
+        }
       }
     });
   };
@@ -311,9 +318,9 @@ export function PropertyForm({ property }: PropertyFormProps) {
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Price (USD)</FormLabel>
+                      <FormLabel>Price (INR)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="450000" {...field} />
+                        <Input type="number" placeholder="4500000" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -438,7 +445,7 @@ export function PropertyForm({ property }: PropertyFormProps) {
             )}
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline">Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
               <Button type="submit" disabled={isPending}>
                 {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {property ? 'Update Property' : 'Create & Share'}

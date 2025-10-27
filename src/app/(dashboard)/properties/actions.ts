@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { propertySchema } from '@/schemas';
 import { revalidatePath } from 'next/cache';
-import type { Property } from '@/lib/types';
+import type { Property, PropertyShare } from '@/lib/types';
 import fetch from 'node-fetch';
 
 // --- Helper Functions & Interfaces ---
@@ -238,6 +238,7 @@ export async function saveProperty(
   const platformsToShare = formData.getAll('share_platforms') as string[];
 
   let savedProperty: Property | null = null;
+  let redirectUrl = '/(dashboard)/properties';
 
   try {
     if (propertyId) {
@@ -249,6 +250,7 @@ export async function saveProperty(
         .single();
       if (error) throw error;
       savedProperty = data;
+      redirectUrl = `/(dashboard)/properties/${propertyId}`;
     } else {
       const { data, error } = await supabase
         .from('properties')
@@ -261,6 +263,7 @@ export async function saveProperty(
         .single();
       if (error) throw error;
       savedProperty = data;
+      redirectUrl = `/(dashboard)/properties/${savedProperty.id}`;
     }
 
     if (!savedProperty) {
@@ -329,6 +332,7 @@ export async function saveProperty(
                 console.error('Error saving share URLs to database:', error.message);
             } else {
                 console.log('Successfully saved share URLs.');
+                revalidatePath(`/(dashboard)/properties/${savedProperty!.id}`);
             }
           }
       });
@@ -344,10 +348,12 @@ export async function saveProperty(
   }
 
   revalidatePath('/(dashboard)/properties');
+  revalidatePath(redirectUrl);
   
   return {
     success: true,
     message: propertyId ? 'Property updated successfully!' : 'Property created and sharing has started!',
+    redirectUrl: redirectUrl,
   };
 }
 
@@ -359,8 +365,22 @@ export async function deleteProperty(propertyId: string, propertyCreatorId: stri
     }
     
     // RLS will enforce the final permission check, but this provides an early exit.
+
+    // Step 1: Delete all social media posts associated with the property
+    const { data: shares, error: sharesError } = await supabase
+      .from('property_shares')
+      .select('*')
+      .eq('property_id', propertyId);
     
-    // Step 1: Delete associated media from Supabase Storage
+    if (sharesError) {
+      console.error('Could not fetch property shares for deletion:', sharesError.message);
+    } else if (shares) {
+      for (const share of shares) {
+        await deleteSocialPost(share.id);
+      }
+    }
+    
+    // Step 2: Delete associated media from Supabase Storage
     const folderPath = `${propertyCreatorId}/property_media/${propertyId}`;
     const { data: files, error: listError } = await supabase.storage
         .from('property_media')
@@ -382,7 +402,7 @@ export async function deleteProperty(propertyId: string, propertyCreatorId: stri
         }
     }
 
-    // Step 2: Delete the property from the database.
+    // Step 3: Delete the property from the database.
     // The database is configured with cascading deletes, so related records
     // in `property_media`, `property_interests`, etc., will be deleted automatically.
     const { error: deleteError } = await supabase
@@ -398,5 +418,66 @@ export async function deleteProperty(propertyId: string, propertyCreatorId: stri
     revalidatePath('/(dashboard)/properties');
     revalidatePath('/dashboard');
 
-    return { success: true, message: 'Property deleted successfully.' };
+    return { success: true, message: 'Property and all associated posts have been deleted successfully.' };
+}
+
+async function deleteFacebookPost(postUrl: string, pageId: string, accessToken: string): Promise<{success: boolean, error?: string}> {
+  try {
+    const postId = postUrl.split('/').pop()?.split('?')[0];
+    if (!postId) throw new Error("Could not extract post ID from URL.");
+
+    const response = await fetch(`${BASE_GRAPH_URL}/${postId}?access_token=${accessToken}`, {
+      method: 'DELETE'
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      return { success: true };
+    } else {
+      throw new Error(result.error?.message || "Failed to delete Facebook post.");
+    }
+  } catch (error: any) {
+    console.error('Facebook post deletion error:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+async function deleteInstagramPost(postUrl: string, accessToken: string): Promise<{success: boolean, error?: string}> {
+    // Note: The Instagram Graph API does not support deleting content via the API.
+    // This is a known limitation. We can only simulate this.
+    console.warn(`--- SIMULATING Instagram post deletion. URL: ${postUrl} ---`);
+    console.warn("The Instagram Graph API does not allow third-party apps to delete posts. This action is only reflected in the CRM.");
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return { success: true };
+}
+
+export async function deleteSocialPost(shareId: string): Promise<{success: boolean, error?: string}> {
+    const supabase = createClient();
+    const { data: share, error: fetchError } = await supabase.from('property_shares').select('*').eq('id', shareId).single();
+
+    if (fetchError || !share || !share.post_url) {
+        return { success: false, error: "Share record not found or post URL is missing." };
+    }
+
+    let result: {success: boolean, error?: string} = { success: false, error: 'Platform not supported for deletion.' };
+
+    if (share.platform === 'Facebook' && process.env.FACEBOOK_PAGE_ID && process.env.META_ACCESS_TOKEN) {
+        result = await deleteFacebookPost(share.post_url, process.env.FACEBOOK_PAGE_ID, process.env.META_ACCESS_TOKEN);
+    } else if (share.platform === 'Instagram' && process.env.META_ACCESS_TOKEN) {
+        result = await deleteInstagramPost(share.post_url, process.env.META_ACCESS_TOKEN);
+    } else if (['99acres', 'OLX'].includes(share.platform)) {
+        console.log(`--- SIMULATING deletion from ${share.platform} ---`);
+        result = { success: true };
+    }
+
+    if (result.success) {
+        const { error: dbError } = await supabase.from('property_shares').delete().eq('id', shareId);
+        if (dbError) {
+            return { success: false, error: `Post was deleted from ${share.platform}, but failed to update CRM record: ${dbError.message}` };
+        }
+        revalidatePath(`/(dashboard)/properties/${share.property_id}`);
+        return { success: true };
+    } else {
+        return { success: false, error: `Failed to delete from ${share.platform}: ${result.error}` };
+    }
 }

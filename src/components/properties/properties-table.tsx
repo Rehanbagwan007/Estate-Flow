@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, MessageSquare, Trash2 } from "lucide-react"
+import { MoreHorizontal, MessageSquare, Trash2, Edit } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { deleteProperty } from "@/app/(dashboard)/properties/actions"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
 interface PropertiesTableProps {
   properties: Property[]
@@ -44,6 +45,7 @@ interface PropertiesTableProps {
 
 export function PropertiesTable({ properties }: PropertiesTableProps) {
   const { toast } = useToast();
+  const router = useRouter();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -68,12 +70,6 @@ export function PropertiesTable({ properties }: PropertiesTableProps) {
         return 'default'
     }
   }
-
-  const handleWhatsAppShare = (property: Property) => {
-    const agentPhone = "15551234567"; // Placeholder for agent's phone
-    const message = `Hi, I'm interested in this property: ${property.title} located at ${property.address}. Price: ${formatCurrency(property.price)}. You can view it here: [link to property]`;
-    window.open(`https://wa.me/${agentPhone}?text=${encodeURIComponent(message)}`, '_blank');
-  };
 
   const handleDelete = async (propertyId: string, propertyCreatorId: string) => {
       const result = await deleteProperty(propertyId, propertyCreatorId);
@@ -101,7 +97,7 @@ export function PropertiesTable({ properties }: PropertiesTableProps) {
           <TableHead className="hidden md:table-cell">Price</TableHead>
           <TableHead className="hidden md:table-cell">Location</TableHead>
           <TableHead>
-            <span className="sr-only">Actions</span>
+            Actions
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -127,50 +123,9 @@ export function PropertiesTable({ properties }: PropertiesTableProps) {
               <TableCell className="hidden md:table-cell">{formatCurrency(property.price)}</TableCell>
               <TableCell className="hidden md:table-cell">{property.city}, {property.state}</TableCell>
               <TableCell>
-                 <AlertDialog>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/properties/edit/${property.id}`}>Edit</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleWhatsAppShare(property)}>
-                          <MessageSquare className="mr-2 h-4 w-4" />
-                          Share via WhatsApp
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the property
-                                and all associated data (media, interests, etc.) from our servers.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                             <form action={() => handleDelete(property.id, property.created_by || '')}>
-                                <AlertDialogAction type="submit" className="bg-destructive hover:bg-destructive/90">
-                                    Continue
-                                </AlertDialogAction>
-                            </form>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                 <Button onClick={() => router.push(`/properties/${property.id}`)}>
+                    Manage Property
+                </Button>
               </TableCell>
             </TableRow>
           )
