@@ -818,7 +818,7 @@ export type Database = {
           property_id: string
           shared_by: string
         }
-        Update: {
+        Update:. {
           created_at?: string
           id?: string
           platform?: string
