@@ -1,9 +1,10 @@
+
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, UserPlus, Shield, UserCheck, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Users, UserPlus, Shield, UserCheck, MoreVertical, Edit, Trash2, BarChart3 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { AddUserForm } from "@/app/(dashboard)/admin/users/add-user-form"
 import { EditUserForm } from "@/app/(dashboard)/admin/users/edit-user-form"
@@ -33,6 +35,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
   } from "@/components/ui/alert-dialog"
+import Link from 'next/link';
 
 export default async function AdminUsersPage() {
   const supabase = createClient();
@@ -170,6 +173,13 @@ export default async function AdminUsersPage() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/admin/users/${u.id}/performance`}>
+                                            <BarChart3 className="mr-2 h-4 w-4" />
+                                            View Performance
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
                                     <DialogTrigger asChild>
                                         <DropdownMenuItem>
                                             <Edit className="mr-2 h-4 w-4" />
