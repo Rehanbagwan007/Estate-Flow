@@ -8,14 +8,11 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Simplified schema, as we'll parse the fields manually
 const leadSchema = z.object({
-  first_name: z.string(),
-  last_name: z.string().optional(),
+  full_name: z.string(),
   email: z.string().email().optional(),
-  phone: z.string(),
-  source: z.string(),
-  property_id: z.string().uuid().optional(),
-  message: z.string().optional(),
+  phone_number: z.string(),
 });
 
 /**
@@ -32,53 +29,84 @@ export async function GET(request: NextRequest) {
   // Check if mode and token are present, and if the token matches the secret
   if (mode === 'subscribe' && token === webhookSecret) {
     // Respond with the challenge to verify the webhook
+    console.log("Webhook verified successfully!");
     return new NextResponse(challenge, { status: 200 });
   } else {
     // Respond with '403 Forbidden' if tokens do not match
+    console.error("Webhook verification failed. Tokens did not match.");
     return new NextResponse('Verification token mismatch', { status: 403 });
   }
 }
 
 /**
- * Handles incoming lead data via POST request.
+ * Handles incoming lead data via POST request from Meta.
  */
 export async function POST(request: NextRequest) {
-  const webhookSecret = process.env.WEBHOOK_SECRET;
-  // Note: For production, you should also validate the X-Hub-Signature-256 header
-  // to ensure the request is genuinely from Meta.
-  const token = request.headers.get('Authorization')?.split(' ')[1];
-
-  if (!webhookSecret || token !== webhookSecret) {
-    // Using a generic auth token check for simplicity here.
-    // In a real scenario, you'd use the verify_token for the GET and the signature for POST.
-  }
-
   try {
     const body = await request.json();
-    const validatedData = leadSchema.parse(body);
+    console.log("--- Received Webhook Payload ---", JSON.stringify(body, null, 2));
 
-    const { error: leadError } = await supabaseAdmin
-      .from('leads')
-      .insert({
-        first_name: validatedData.first_name,
-        last_name: validatedData.last_name,
-        email: validatedData.email,
-        phone: validatedData.phone,
-        status: 'Warm', // Default status for new webhook leads
-      });
+    // Meta sends a payload with an `entry` array
+    if (body.object === 'page' && body.entry) {
+      for (const entry of body.entry) {
+        for (const change of entry.changes) {
+          if (change.field === 'leadgen') {
+            const leadData = change.value;
+            const formId = leadData.form_id;
+            const leadgenId = leadData.leadgen_id;
+            
+            // Fetch the actual lead data using the leadgen_id
+            // Note: This requires a Page Access Token with leads_retrieval permission
+            const accessToken = process.env.META_ACCESS_TOKEN;
+            const leadDetailsResponse = await fetch(`https://graph.facebook.com/v19.0/${leadgenId}?access_token=${accessToken}`);
+            const leadDetails = await leadDetailsResponse.json();
+            
+            console.log("--- Fetched Lead Details ---", JSON.stringify(leadDetails, null, 2));
 
-    if (leadError) {
-      console.error('Error creating lead:', leadError);
-      return NextResponse.json({ error: 'Failed to create lead.' }, { status: 500 });
+            if (leadDetails.error) {
+              throw new Error(`Failed to fetch lead details: ${leadDetails.error.message}`);
+            }
+
+            // Extract fields from the detailed lead data
+            let email, phone, fullName;
+            for(const field of leadDetails.field_data) {
+                if (field.name === 'full_name') fullName = field.values[0];
+                if (field.name === 'email') email = field.values[0];
+                if (field.name === 'phone_number') phone = field.values[0];
+            }
+            
+            if (!fullName || !phone) {
+                console.error("Essential lead data (full name or phone) is missing.");
+                continue; // Skip this lead
+            }
+
+            const { error: leadError } = await supabaseAdmin
+              .from('leads')
+              .insert({
+                first_name: fullName.split(' ')[0], // Simple split for first name
+                last_name: fullName.split(' ').slice(1).join(' '), // The rest is last name
+                email: email,
+                phone: phone,
+                status: 'Warm', // Default status for new webhook leads
+                source: `Facebook/Instagram Form (${formId})`
+              });
+
+            if (leadError) {
+              console.error('Supabase error creating lead:', leadError);
+              // Don't throw, just log it and continue processing other leads
+            } else {
+              console.log(`Successfully created lead for ${fullName}`);
+            }
+          }
+        }
+      }
     }
 
-    return NextResponse.json({ success: true, message: 'Lead created successfully.' });
+    return NextResponse.json({ success: true, message: 'Webhook processed.' });
 
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid data format.', details: error.errors }, { status: 400 });
-    }
-    console.error('Webhook error:', error);
-    return NextResponse.json({ error: 'An unexpected error occurred.' }, { status: 500 });
+    console.error('Webhook POST error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

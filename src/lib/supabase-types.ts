@@ -494,6 +494,7 @@ export type Database = {
           phone: string | null
           status: Database["public"]["Enums"]["lead_status"]
           updated_at: string
+          source: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -506,6 +507,7 @@ export type Database = {
           phone?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           updated_at?: string
+          source?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -518,6 +520,7 @@ export type Database = {
           phone?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           updated_at?: string
+          source?: string | null
         }
         Relationships: [
           {

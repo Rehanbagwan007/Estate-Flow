@@ -34,6 +34,11 @@ export type Database = MergeDeep<
             task_type: 'Follow-up' | 'Call' | 'Site Visit' | 'Meeting';
             customer_phone: string | null;
           }
+        };
+        leads: {
+          Row: {
+            source?: string;
+          }
         }
       };
     };
