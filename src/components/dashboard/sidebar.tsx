@@ -43,11 +43,6 @@ export function Sidebar({ userRole }: SidebarProps) {
     
     // Super Admin & Admin
     { href: '/admin/users', label: 'User Management', icon: UserCheck, roles: ['super_admin', 'admin'] },
-    { href: '/admin/approvals', label: 'Pending Approvals', icon: Bell, roles: ['super_admin', 'admin'] },
-    { href: '/admin/assignments', label: 'Agent Assignments', icon: Target, roles: ['super_admin', 'admin'] },
-    { href: '/admin/call-recordings', label: 'Call Recordings', icon: Phone, roles: ['super_admin', 'admin'] },
-    { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, roles: ['super_admin', 'admin'] },
-    { href: '/admin/settings', label: 'Settings', icon: Settings, roles: ['super_admin', 'admin'] },
     
     // Properties (Admin, Agent, Customer)
     { href: '/properties', label: 'Properties', icon: Building2, roles: ['super_admin', 'admin', 'agent', 'customer'] },
@@ -59,22 +54,12 @@ export function Sidebar({ userRole }: SidebarProps) {
     // Tasks (Admin, Agent, Sales roles)
     { href: '/tasks', label: 'Tasks', icon: ListTodo, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
     { href: '/tasks/new', label: 'New Task', icon: PlusCircle, roles: ['super_admin', 'admin', 'sales_manager'] },
-    
-    // Calls (Caller roles, Admin, Agent)
-    { href: '/calls', label: 'Call Center', icon: Phone, roles: ['super_admin', 'admin', 'caller_1', 'caller_2', 'agent'] },
-    { href: '/calls/history', label: 'Call History', icon: Phone, roles: ['super_admin', 'admin', 'caller_1', 'caller_2', 'agent'] },
-    
+        
     // Sales Management
     { href: '/sales/team', label: 'Sales Team', icon: Award, roles: ['super_admin', 'admin', 'sales_manager'] },
-    { href: '/sales/performance', label: 'Performance', icon: BarChart3, roles: ['super_admin', 'admin', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
     
     // Customer specific
     { href: '/my-interests', label: 'My Interests', icon: Heart, roles: ['customer'] },
-    { href: '/my-appointments', label: 'My Appointments', icon: Calendar, roles: ['customer'] },
-    
-    // Agent specific
-    { href: '/agent/assignments', label: 'My Assignments', icon: Target, roles: ['agent', 'sales_executive_1', 'sales_executive_2'] },
-    { href: '/agent/customers', label: 'My Customers', icon: Users, roles: ['agent', 'sales_executive_1', 'sales_executive_2'] },
   ];
 
   const isActive = (href: string) => {
