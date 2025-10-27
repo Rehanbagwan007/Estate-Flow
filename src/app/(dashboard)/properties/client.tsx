@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { usePropertyStore } from '@/lib/store/property-store';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import type { Property } from '@/lib/types';
 
 interface PropertiesClientProps {
@@ -20,17 +20,13 @@ interface PropertiesClientProps {
 }
 
 export function PropertiesClient({ initialProperties }: PropertiesClientProps) {
-  const setProperties = usePropertyStore((state) => state.setProperties);
-  const initialized = useRef(false);
+  const { properties, setProperties } = usePropertyStore();
 
+  // This effect will now run whenever the server-provided `initialProperties` change,
+  // ensuring the client-side store is always in sync with the latest data from the server.
   useEffect(() => {
-    if (!initialized.current) {
-      setProperties(initialProperties);
-      initialized.current = true;
-    }
+    setProperties(initialProperties);
   }, [initialProperties, setProperties]);
-
-  const properties = usePropertyStore((state) => state.properties);
 
   return (
     <Card>
