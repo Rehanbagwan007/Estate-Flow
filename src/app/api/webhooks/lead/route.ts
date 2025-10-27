@@ -12,6 +12,7 @@ const supabaseAdmin = createClient(
  * Handles the webhook verification GET request from Meta.
  */
 export async function GET(request: NextRequest) {
+  console.log(request)
   const webhookSecret = process.env.WEBHOOK_SECRET;
   const { searchParams } = new URL(request.url);
   
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
  * Handles incoming lead data via POST request from Meta.
  */
 export async function POST(request: NextRequest) {
+  console.log(request)
   try {
     const body = await request.json();
     console.log("--- Received Webhook Payload ---", JSON.stringify(body, null, 2));
