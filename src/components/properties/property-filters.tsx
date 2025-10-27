@@ -30,10 +30,10 @@ export interface PropertyFilters {
 const defaultFilters: PropertyFilters = {
   search: '',
   location: '',
-  propertyType: '',
+  propertyType: 'all',
   priceRange: [0, 50000000],
-  bedrooms: '',
-  bathrooms: '',
+  bedrooms: 'all',
+  bathrooms: 'all',
   status: 'Available'
 };
 
@@ -57,6 +57,9 @@ export function PropertyFilters({ onFiltersChange, initialFilters = defaultFilte
     if (key === 'priceRange' && Array.isArray(value)) {
         return value[0] !== defaultFilters.priceRange[0] || value[1] !== defaultFilters.priceRange[1];
     }
+    if(key === 'propertyType' && value === 'all') return false;
+    if(key === 'bedrooms' && value === 'all') return false;
+    if(key === 'bathrooms' && value === 'all') return false;
     return value && value !== '';
   }).length;
 
@@ -140,7 +143,7 @@ export function PropertyFilters({ onFiltersChange, initialFilters = defaultFilte
                   <SelectValue placeholder="Any type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Any type</SelectItem>
+                  <SelectItem value="all">Any type</SelectItem>
                   <SelectItem value="Residential">Residential</SelectItem>
                   <SelectItem value="Commercial">Commercial</SelectItem>
                   <SelectItem value="Land">Land</SelectItem>
@@ -158,7 +161,7 @@ export function PropertyFilters({ onFiltersChange, initialFilters = defaultFilte
                   <SelectValue placeholder="Any status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Any status</SelectItem>
+                  <SelectItem value="all">Any status</SelectItem>
                   <SelectItem value="Available">Available</SelectItem>
                   <SelectItem value="Sold">Sold</SelectItem>
                   <SelectItem value="Rented">Rented</SelectItem>
@@ -202,7 +205,7 @@ export function PropertyFilters({ onFiltersChange, initialFilters = defaultFilte
                       <SelectValue placeholder="Any" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value="all">Any</SelectItem>
                       <SelectItem value="1">1+</SelectItem>
                       <SelectItem value="2">2+</SelectItem>
                       <SelectItem value="3">3+</SelectItem>
@@ -222,7 +225,7 @@ export function PropertyFilters({ onFiltersChange, initialFilters = defaultFilte
                       <SelectValue placeholder="Any" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value="all">Any</SelectItem>
                       <SelectItem value="1">1+</SelectItem>
                       <SelectItem value="2">2+</SelectItem>
                       <SelectItem value="3">3+</SelectItem>

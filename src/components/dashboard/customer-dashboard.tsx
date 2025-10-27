@@ -46,10 +46,10 @@ interface CustomerDashboardProps {
 const defaultFilters: PropertyFiltersType = {
   search: '',
   location: '',
-  propertyType: '',
+  propertyType: 'all',
   priceRange: [0, 50000000],
-  bedrooms: '',
-  bathrooms: '',
+  bedrooms: 'all',
+  bathrooms: 'all',
   status: 'Available'
 };
 
@@ -72,7 +72,7 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
             myInterestsResult,
             myAppointmentsResult
         ] = await Promise.all([
-            supabase.from('properties').select('*, property_media(*)').eq('status', 'Available'),
+            supabase.from('properties').select('*, property_media(*)'),
             supabase.from('property_interests').select('*, properties(*)').eq('customer_id', userId),
             supabase.from('appointments').select('*, profiles!appointments_agent_id_fkey(*)').eq('customer_id', userId)
         ]);
@@ -101,14 +101,17 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
     if (filters.location) {
       filtered = filtered.filter(p => p.city.toLowerCase().includes(filters.location.toLowerCase()));
     }
-    if (filters.propertyType) {
+    if (filters.propertyType && filters.propertyType !== 'all') {
       filtered = filtered.filter(p => p.property_type === filters.propertyType);
     }
-    if (filters.bedrooms) {
+    if (filters.bedrooms && filters.bedrooms !== 'all') {
       filtered = filtered.filter(p => p.bedrooms && p.bedrooms >= parseInt(filters.bedrooms));
     }
-     if (filters.bathrooms) {
+     if (filters.bathrooms && filters.bathrooms !== 'all') {
       filtered = filtered.filter(p => p.bathrooms && p.bathrooms >= parseInt(filters.bathrooms));
+    }
+    if(filters.status && filters.status !== 'all') {
+      filtered = filtered.filter(p => p.status === filters.status);
     }
     filtered = filtered.filter(p => p.price >= filters.priceRange[0] && p.price <= filters.priceRange[1]);
     
