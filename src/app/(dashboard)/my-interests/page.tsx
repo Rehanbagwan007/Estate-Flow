@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { deleteInterest } from './actions';
+import { formatCurrency } from '@/lib/utils';
 
 export default async function MyInterestsPage() {
   const supabase = createClient();
@@ -145,7 +146,7 @@ export default async function MyInterestsPage() {
                     <div>
                       <p className="font-medium">{interest.property?.title || 'Property not available'}</p>
                       <p className="text-sm text-muted-foreground">
-                        {interest.property?.city ? `${interest.property.city}, ${interest.property.state} • ₹${interest.property.price?.toLocaleString()}` : 'Details not available'}
+                        {interest.property?.city ? `${interest.property.city}, ${interest.property.state} • ${formatCurrency(interest.property.price || 0)}` : 'Details not available'}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {interest.property ? `${interest.property.bedrooms} bed • ${interest.property.bathrooms} bath` : ''}

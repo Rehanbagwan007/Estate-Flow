@@ -1,5 +1,6 @@
 
 
+
 'use server';
 
 import { z } from 'zod';
@@ -8,6 +9,7 @@ import { propertySchema } from '@/schemas';
 import { revalidatePath } from 'next/cache';
 import type { Property, PropertyShare } from '@/lib/types';
 import fetch from 'node-fetch';
+import { formatCurrency } from '@/lib/utils';
 
 // --- Helper Functions & Interfaces ---
 
@@ -79,7 +81,7 @@ async function postToFacebook(property: Property, imageUrls: string[] | null): P
           throw new Error("All photo uploads to Facebook failed.");
         }
         
-        const message = `${property.title}\n\n${property.description || ''}\n\nPrice: ₹${property.price.toLocaleString()}\nLocation: ${property.city}, ${property.state}\n\n#realestate #${property.city.replace(/\s+/g, '')} #${property.property_type}`;
+        const message = `${property.title}\n\n${property.description || ''}\n\nPrice: ${formatCurrency(property.price)}\nLocation: ${property.city}, ${property.state}\n\n#realestate #${property.city.replace(/\s+/g, '')} #${property.property_type}`;
 
 
         // Step 3: Create the post with the uploaded photos using the Page Access Token
@@ -114,7 +116,7 @@ async function postToInstagram(property: Property, imageUrls: string[] | null): 
     }
 
     try {
-        const caption = `${property.title}\n\n${property.description || ''}\n\nPrice: ₹${property.price.toLocaleString()}\nLocation: ${property.city}, ${property.state}\n\n#realestate #${property.city.replace(/\s+/g, '')} #${property.property_type?.replace(/\s+/g, '').toLowerCase()}`;
+        const caption = `${property.title}\n\n${property.description || ''}\n\nPrice: ${formatCurrency(property.price)}\nLocation: ${property.city}, ${property.state}\n\n#realestate #${property.city.replace(/\s+/g, '')} #${property.property_type?.replace(/\s+/g, '').toLowerCase()}`;
 
         let finalMediaId;
 

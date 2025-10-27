@@ -23,6 +23,7 @@ import { useAppointmentStore } from '@/lib/store/appointment-store';
 import Image from 'next/image';
 import { PropertyInterestForm } from '../properties/property-interest-form';
 import { createClient } from '@/lib/supabase/client';
+import { formatCurrency } from '@/lib/utils';
 
 
 export interface EnrichedProperty extends Property {
@@ -210,8 +211,7 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
                                 <span>{property.city}, {property.state}</span>
                             </div>
                             <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
-                                <DollarSign className="h-4 w-4" />
-                                <span className="font-semibold text-lg">₹{Number(property.price || 0).toLocaleString()}</span>
+                                <span className="font-semibold text-lg">{formatCurrency(property.price || 0)}</span>
                             </div>
                             <div className="flex gap-2">
                                 <Button 

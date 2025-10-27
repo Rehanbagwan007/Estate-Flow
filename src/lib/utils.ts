@@ -24,3 +24,12 @@ export const getInitials = (firstName?: string | null, lastName?: string | null)
   const last = lastName?.[0] || '';
   return `${first}${last}`.toUpperCase();
 };
+
+export const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
