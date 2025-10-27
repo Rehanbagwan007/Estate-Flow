@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/tabs";
 import { useLeadStore } from '@/lib/store/lead-store';
 import type { Lead, Profile } from '@/lib/types';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { LeadsFilters } from '@/components/leads/leads-filters';
 import {
   Dialog,
@@ -52,9 +52,9 @@ export function LeadsClient({ initialLeads, teamMembers }: LeadsClientProps) {
     setFilteredLeads(leads);
   }, [leads]);
   
-  const handleFilterChange = (filteredData: (Lead & { profile: Profile | null })[]) => {
+  const handleFilterChange = useCallback((filteredData: (Lead & { profile: Profile | null })[]) => {
     setFilteredLeads(filteredData);
-  };
+  }, []);
 
   const handleLeadAdded = () => {
     // The store will be updated by the action, so we just need to close the form.
