@@ -202,7 +202,7 @@ async function shareToOlx(property: Property): Promise<MediaUploadResult> {
 }
 
 
-// --- Main Server Action ---
+// --- Main Server Actions ---
 export async function saveProperty(
   prevState: { message: string; success?: boolean },
   formData: FormData
@@ -349,4 +349,54 @@ export async function saveProperty(
     success: true,
     message: propertyId ? 'Property updated successfully!' : 'Property created and sharing has started!',
   };
+}
+
+export async function deleteProperty(propertyId: string, propertyCreatorId: string) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return { error: "Authentication required." };
+    }
+    
+    // RLS will enforce the final permission check, but this provides an early exit.
+    
+    // Step 1: Delete associated media from Supabase Storage
+    const folderPath = `${propertyCreatorId}/property_media/${propertyId}`;
+    const { data: files, error: listError } = await supabase.storage
+        .from('property_media')
+        .list(folderPath);
+
+    if (listError) {
+        console.warn(`Could not list files for property ${propertyId}. Skipping storage cleanup.`, listError);
+    }
+    
+    if (files && files.length > 0) {
+        const filePaths = files.map(file => `${folderPath}/${file.name}`);
+        const { error: removeError } = await supabase.storage
+            .from('property_media')
+            .remove(filePaths);
+            
+        if (removeError) {
+            console.error(`Failed to delete some media for property ${propertyId}`, removeError);
+            // Non-critical error, we can proceed with deleting the DB record
+        }
+    }
+
+    // Step 2: Delete the property from the database.
+    // The database is configured with cascading deletes, so related records
+    // in `property_media`, `property_interests`, etc., will be deleted automatically.
+    const { error: deleteError } = await supabase
+        .from('properties')
+        .delete()
+        .eq('id', propertyId);
+    
+    if (deleteError) {
+        console.error('Error deleting property:', deleteError);
+        return { error: `Failed to delete property: ${deleteError.message}` };
+    }
+    
+    revalidatePath('/(dashboard)/properties');
+    revalidatePath('/dashboard');
+
+    return { success: true, message: 'Property deleted successfully.' };
 }

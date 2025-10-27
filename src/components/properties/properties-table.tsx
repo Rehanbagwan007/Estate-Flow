@@ -1,3 +1,4 @@
+
 'use client'
 
 import type { Property } from "@/lib/types"
@@ -11,27 +12,43 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, MessageSquare } from "lucide-react"
+import { MoreHorizontal, MessageSquare, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import Image from "next/image"
 import placeholderImages from '@/lib/placeholder-images.json';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { deleteProperty } from "@/app/(dashboard)/properties/actions"
+import { useToast } from "@/hooks/use-toast"
 
 interface PropertiesTableProps {
   properties: Property[]
 }
 
 export function PropertiesTable({ properties }: PropertiesTableProps) {
+  const { toast } = useToast();
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount)
@@ -58,6 +75,22 @@ export function PropertiesTable({ properties }: PropertiesTableProps) {
     window.open(`https://wa.me/${agentPhone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
+  const handleDelete = async (propertyId: string, propertyCreatorId: string) => {
+      const result = await deleteProperty(propertyId, propertyCreatorId);
+      if (result.success) {
+          toast({
+              title: "Success",
+              description: result.message,
+          });
+      } else {
+          toast({
+              title: "Error",
+              description: result.error,
+              variant: "destructive",
+          });
+      }
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -82,7 +115,7 @@ export function PropertiesTable({ properties }: PropertiesTableProps) {
                   alt="Property image"
                   className="aspect-square rounded-md object-cover"
                   height="64"
-                  src={placeholder.src}
+                  src={property.property_media?.[0]?.file_path || placeholder.src}
                   width="64"
                   data-ai-hint={placeholder.hint}
                 />
@@ -94,25 +127,50 @@ export function PropertiesTable({ properties }: PropertiesTableProps) {
               <TableCell className="hidden md:table-cell">{formatCurrency(property.price)}</TableCell>
               <TableCell className="hidden md:table-cell">{property.city}, {property.state}</TableCell>
               <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button aria-haspopup="true" size="icon" variant="ghost">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Toggle menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem asChild>
-                      <Link href={`/properties/${property.id}/edit`}>Edit</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleWhatsAppShare(property)}>
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      Share via WhatsApp
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                 <AlertDialog>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Toggle menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/properties/edit/${property.id}`}>Edit</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleWhatsAppShare(property)}>
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          Share via WhatsApp
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the property
+                                and all associated data (media, interests, etc.) from our servers.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                             <form action={() => handleDelete(property.id, property.created_by || '')}>
+                                <AlertDialogAction type="submit" className="bg-destructive hover:bg-destructive/90">
+                                    Continue
+                                </AlertDialogAction>
+                            </form>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
               </TableCell>
             </TableRow>
           )
