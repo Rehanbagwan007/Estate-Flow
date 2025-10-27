@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -9,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Search, Filter, X, MapPin, DollarSign, Building2 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 interface PropertyFiltersProps {
   onFiltersChange: (filters: PropertyFilters) => void;
@@ -29,7 +31,7 @@ const defaultFilters: PropertyFilters = {
   search: '',
   location: '',
   propertyType: '',
-  priceRange: [0, 10000000],
+  priceRange: [0, 50000000],
   bedrooms: '',
   bathrooms: '',
   status: 'Available'
@@ -50,10 +52,14 @@ export function PropertyFilters({ onFiltersChange, initialFilters = defaultFilte
     onFiltersChange(defaultFilters);
   };
 
-  const activeFiltersCount = Object.values(filters).filter(value => 
-    value !== '' && value !== defaultFilters.search && 
-    (Array.isArray(value) ? value[0] !== defaultFilters.priceRange[0] || value[1] !== defaultFilters.priceRange[1] : true)
-  ).length;
+  const activeFiltersCount = Object.entries(filters).filter(([key, value]) => {
+    if (key === 'status' && value === 'Available') return false;
+    if (key === 'priceRange' && Array.isArray(value)) {
+        return value[0] !== defaultFilters.priceRange[0] || value[1] !== defaultFilters.priceRange[1];
+    }
+    return value && value !== '';
+  }).length;
+
 
   return (
     <Card>
@@ -135,11 +141,9 @@ export function PropertyFilters({ onFiltersChange, initialFilters = defaultFilte
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Any type</SelectItem>
-                  <SelectItem value="apartment">Apartment</SelectItem>
-                  <SelectItem value="house">House</SelectItem>
-                  <SelectItem value="villa">Villa</SelectItem>
-                  <SelectItem value="commercial">Commercial</SelectItem>
-                  <SelectItem value="land">Land</SelectItem>
+                  <SelectItem value="Residential">Residential</SelectItem>
+                  <SelectItem value="Commercial">Commercial</SelectItem>
+                  <SelectItem value="Land">Land</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -182,8 +186,8 @@ export function PropertyFilters({ onFiltersChange, initialFilters = defaultFilte
                       className="w-full"
                     />
                     <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>₹{filters.priceRange[0].toLocaleString()}</span>
-                      <span>₹{filters.priceRange[1].toLocaleString()}</span>
+                      <span>{formatCurrency(filters.priceRange[0])}</span>
+                      <span>{formatCurrency(filters.priceRange[1])}</span>
                     </div>
                   </div>
                 </div>
@@ -228,44 +232,6 @@ export function PropertyFilters({ onFiltersChange, initialFilters = defaultFilte
                 </div>
               </div>
 
-              {/* Quick Price Filters */}
-              <div className="space-y-2">
-                <Label>Quick Price Filters</Label>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleFilterChange('priceRange', [0, 5000000])}
-                    className={filters.priceRange[0] === 0 && filters.priceRange[1] === 5000000 ? 'bg-blue-100' : ''}
-                  >
-                    Under ₹50L
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleFilterChange('priceRange', [5000000, 10000000])}
-                    className={filters.priceRange[0] === 5000000 && filters.priceRange[1] === 10000000 ? 'bg-blue-100' : ''}
-                  >
-                    ₹50L - ₹1Cr
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleFilterChange('priceRange', [10000000, 25000000])}
-                    className={filters.priceRange[0] === 10000000 && filters.priceRange[1] === 25000000 ? 'bg-blue-100' : ''}
-                  >
-                    ₹1Cr - ₹2.5Cr
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleFilterChange('priceRange', [25000000, 50000000])}
-                    className={filters.priceRange[0] === 25000000 && filters.priceRange[1] === 50000000 ? 'bg-blue-100' : ''}
-                  >
-                    Above ₹2.5Cr
-                  </Button>
-                </div>
-              </div>
             </div>
           )}
         </div>

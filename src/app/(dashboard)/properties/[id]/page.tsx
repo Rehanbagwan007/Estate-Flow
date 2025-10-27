@@ -14,7 +14,8 @@ import {
     Edit,
     Trash2,
     Share2,
-    Building2
+    Building2,
+    Heart
 } from 'lucide-react';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import Link from "next/link";
@@ -39,6 +40,16 @@ import {
     AlertDialogTrigger,
   } from "@/components/ui/alert-dialog"
 import { deleteProperty } from "../actions";
+import { formatCurrency } from "@/lib/utils";
+import { PropertyInterestForm } from "@/components/properties/property-interest-form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 async function getPropertyData(id: string) {
     const supabase = createClient();
@@ -57,20 +68,26 @@ async function getPropertyData(id: string) {
 
 
 export default async function PropertyDetailsPage({ params }: { params: { id: string } }) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect('/login');
+    }
+
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+
+    if (!profile) {
+      redirect('/login');
+    }
+
     const property = await getPropertyData(params.id);
 
     if (!property) {
         notFound();
     }
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-IN', {
-          style: 'currency',
-          currency: 'INR',
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-        }).format(amount)
-    }
+    const isAdminOrAgent = ['super_admin', 'admin', 'agent'].includes(profile.role);
 
     return (
         <div className="space-y-6">
@@ -103,94 +120,136 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                                 {property.address}, {property.city}, {property.state} {property.zip_code}
                             </CardDescription>
                         </div>
-                        <div className="flex gap-2">
-                            <Button variant="outline" asChild>
-                                <Link href={`/properties/edit/${property.id}`}>
-                                    <Edit className="mr-2" /> Edit
-                                </Link>
-                            </Button>
-                             <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive">
-                                        <Trash2 className="mr-2" /> Delete
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This will permanently delete the property, its media, and all associated social media posts. This action cannot be undone.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <form action={async () => {
-                                        "use server";
-                                        await deleteProperty(property.id, property.created_by || '');
-                                        redirect('/properties');
-                                    }}>
-                                        <AlertDialogAction type="submit" className="bg-destructive hover:bg-destructive/90">
-                                            Yes, delete everything
-                                        </AlertDialogAction>
-                                    </form>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
+                         {isAdminOrAgent && (
+                            <div className="flex gap-2">
+                                <Button variant="outline" asChild>
+                                    <Link href={`/properties/edit/${property.id}`}>
+                                        <Edit className="mr-2" /> Edit
+                                    </Link>
+                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive">
+                                            <Trash2 className="mr-2" /> Delete
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will permanently delete the property, its media, and all associated social media posts. This action cannot be undone.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <form action={async () => {
+                                            "use server";
+                                            await deleteProperty(property.id, property.created_by || '');
+                                            redirect('/properties');
+                                        }}>
+                                            <AlertDialogAction type="submit" className="bg-destructive hover:bg-destructive/90">
+                                                Yes, delete everything
+                                            </AlertDialogAction>
+                                        </form>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                         )}
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {property.property_media && property.property_media.length > 0 && (
-                        <Carousel className="w-full max-w-4xl mx-auto mb-6">
-                            <CarouselContent>
-                                {property.property_media.map((media) => (
-                                <CarouselItem key={media.id}>
-                                    <div className="aspect-video relative">
-                                    <Image
-                                        src={media.file_path}
-                                        alt={property.title || 'Property image'}
-                                        fill
-                                        className="object-cover rounded-md"
-                                    />
-                                    </div>
-                                </CarouselItem>
-                                ))}
-                            </CarouselContent>
-                            <CarouselPrevious />
-                            <CarouselNext />
-                        </Carousel>
-                    )}
+                   <div className="grid md:grid-cols-2 gap-8">
+                     {/* Image Carousel */}
+                     <div className="md:col-span-1">
+                        {property.property_media && property.property_media.length > 0 ? (
+                            <Carousel className="w-full">
+                                <CarouselContent>
+                                    {property.property_media.map((media) => (
+                                    <CarouselItem key={media.id}>
+                                        <div className="aspect-video relative">
+                                        <Image
+                                            src={media.file_path}
+                                            alt={property.title || 'Property image'}
+                                            fill
+                                            className="object-cover rounded-md"
+                                        />
+                                        </div>
+                                    </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                                <CarouselPrevious />
+                                <CarouselNext />
+                            </Carousel>
+                        ) : (
+                            <div className="aspect-video bg-muted rounded-md flex items-center justify-center">
+                                <Building2 className="h-16 w-16 text-muted-foreground" />
+                            </div>
+                        )}
+                    </div>
 
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
+                    {/* Details & Actions */}
+                    <div className="md:col-span-1 space-y-6">
+                        <div>
                             <h3 className="font-semibold text-lg border-b pb-2">Property Details</h3>
-                            <div className="flex items-center justify-between text-lg">
+                            <div className="flex items-center justify-between text-2xl mt-4">
                                 <span className="text-muted-foreground">Price</span>
                                 <span className="font-bold flex items-center gap-2">
-                                    <DollarSign className="text-green-600" />
+                                    <DollarSign className="text-green-600 h-6 w-6" />
                                     {formatCurrency(property.price)}
                                 </span>
                             </div>
-                             <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="grid grid-cols-2 gap-4 text-sm mt-4">
                                 <div className="flex items-center gap-2"><Bed className="text-muted-foreground"/> <span>{property.bedrooms} Bedrooms</span></div>
                                 <div className="flex items-center gap-2"><Bath className="text-muted-foreground"/> <span>{property.bathrooms} Bathrooms</span></div>
                                 <div className="flex items-center gap-2"><Square className="text-muted-foreground"/> <span>{property.area_sqft} sqft</span></div>
                                 <div className="flex items-center gap-2"><Building2 className="text-muted-foreground"/> <span>{property.property_type}</span></div>
                             </div>
-                            <Separator />
+                        </div>
+
+                        <Separator />
+                        
+                        <div>
+                           <h3 className="font-semibold text-lg mb-2">Description</h3>
                             <p className="text-muted-foreground text-sm">
                                 {property.description}
                             </p>
                         </div>
                         
-                        <div className="space-y-4">
-                            <h3 className="font-semibold text-lg border-b pb-2 flex items-center gap-2">
-                                <Share2 className="h-5 w-5" />
-                                Social Media Shares
-                            </h3>
-                             <SocialSharesList shares={property.property_shares || []} />
-                        </div>
+                        {profile.role === 'customer' && property.status === 'Available' && (
+                             <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button className="w-full" size="lg">
+                                        <Heart className="mr-2" /> I'm Interested
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-md">
+                                    <PropertyInterestForm
+                                        propertyId={property.id}
+                                        propertyTitle={property.title || 'this property'}
+                                        onSuccess={() => redirect(`/my-interests`)}
+                                    />
+                                </DialogContent>
+                            </Dialog>
+                        )}
                     </div>
+                   </div>
+
+                    {isAdminOrAgent && (
+                        <div className="mt-8">
+                             <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Share2 className="h-5 w-5" />
+                                        Social Media Shares
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <SocialSharesList shares={property.property_shares || []} />
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

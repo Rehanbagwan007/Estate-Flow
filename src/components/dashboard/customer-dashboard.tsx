@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition, useEffect, useRef } from 'react';
@@ -21,9 +22,11 @@ import { useInterestStore } from '@/lib/store/interest-store';
 import { usePropertyStore } from '@/lib/store/property-store';
 import { useAppointmentStore } from '@/lib/store/appointment-store';
 import Image from 'next/image';
+import Link from 'next/link';
 import { PropertyInterestForm } from '../properties/property-interest-form';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/utils';
+import { PropertyFilters as PropertyFiltersComponent, type PropertyFilters as PropertyFiltersType } from '@/components/properties/property-filters';
 
 
 export interface EnrichedProperty extends Property {
@@ -40,12 +43,25 @@ interface CustomerDashboardProps {
   userId: string;
 }
 
+const defaultFilters: PropertyFiltersType = {
+  search: '',
+  location: '',
+  propertyType: '',
+  priceRange: [0, 50000000],
+  bedrooms: '',
+  bathrooms: '',
+  status: 'Available'
+};
+
 export function CustomerDashboard({ userId }: CustomerDashboardProps) {
   const { toast } = useToast();
   const { interests: myInterests, setInterests, addInterest } = useInterestStore();
   const { properties, setProperties } = usePropertyStore();
   const { appointments: myAppointments, setAppointments } = useAppointmentStore();
   const [isLoading, setIsLoading] = useState(true);
+
+  const [filteredProperties, setFilteredProperties] = useState<EnrichedProperty[]>([]);
+  const [filters, setFilters] = useState<PropertyFiltersType>(defaultFilters);
 
   useEffect(() => {
     const supabase = createClient();
@@ -61,7 +77,9 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
             supabase.from('appointments').select('*, profiles!appointments_agent_id_fkey(*)').eq('customer_id', userId)
         ]);
 
-        setProperties((propertiesResult.data as EnrichedProperty[]) || []);
+        const allProps = (propertiesResult.data as EnrichedProperty[]) || [];
+        setProperties(allProps);
+        setFilteredProperties(allProps);
         setInterests((myInterestsResult.data as EnrichedInterest[]) || []);
         setAppointments((myAppointmentsResult.data as EnrichedAppointment[]) || []);
         setIsLoading(false);
@@ -69,6 +87,33 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
     fetchData();
   }, [userId, setProperties, setInterests, setAppointments]);
 
+  useEffect(() => {
+    let filtered = properties;
+
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.title.toLowerCase().includes(searchLower) ||
+        p.description?.toLowerCase().includes(searchLower) ||
+        p.city.toLowerCase().includes(searchLower)
+      );
+    }
+    if (filters.location) {
+      filtered = filtered.filter(p => p.city.toLowerCase().includes(filters.location.toLowerCase()));
+    }
+    if (filters.propertyType) {
+      filtered = filtered.filter(p => p.property_type === filters.propertyType);
+    }
+    if (filters.bedrooms) {
+      filtered = filtered.filter(p => p.bedrooms && p.bedrooms >= parseInt(filters.bedrooms));
+    }
+     if (filters.bathrooms) {
+      filtered = filtered.filter(p => p.bathrooms && p.bathrooms >= parseInt(filters.bathrooms));
+    }
+    filtered = filtered.filter(p => p.price >= filters.priceRange[0] && p.price <= filters.priceRange[1]);
+    
+    setFilteredProperties(filtered);
+  }, [filters, properties]);
 
   const [selectedProperty, setSelectedProperty] = useState<EnrichedProperty | null>(null);
   const [showInterestForm, setShowInterestForm] = useState(false);
@@ -102,31 +147,8 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
         </p>
       </div>
 
-      {/* Placeholder for future filter component */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Search by location, property type, or features..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Filters
-              </Button>
-              <Button>Search Properties</Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
+      <PropertyFiltersComponent onFiltersChange={setFilters} initialFilters={filters} />
+      
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -136,7 +158,7 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
           <CardContent>
             <div className="text-2xl font-bold">{totalProperties}</div>
             <p className="text-xs text-muted-foreground">
-              Verified listings
+              {filteredProperties.length} matching your filters
             </p>
           </CardContent>
         </Card>
@@ -176,13 +198,13 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {properties.length === 0 ? (
+          {filteredProperties.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No properties available at the moment
+              No properties match your filters.
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {properties.slice(0, 6).map((property) => {
+              {filteredProperties.slice(0, 6).map((property) => {
                 const isInterested = myInterests.some(i => i.property_id === property.id);
                 return (
                     <div key={property.id} className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
@@ -191,8 +213,7 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
                             <Image 
                             src={property.property_media[0].file_path} 
                             alt={property.title || 'Property Image'}
-                            width={400}
-                            height={225}
+                            fill
                             className="w-full h-full object-cover"
                             />
                         ) : (
@@ -223,21 +244,12 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
                                     <Heart className="h-4 w-4 mr-1" />
                                     {isInterested ? 'Interested' : "I'm Interested"}
                                 </Button>
-                                <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button size="sm" variant="outline">
+                                <Button asChild size="sm" variant="outline" className="flex-1">
+                                    <Link href={`/properties/${property.id}`}>
                                         <Eye className="h-4 w-4 mr-1" />
                                         View Details
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-[625px]">
-                                    <DialogHeader>
-                                        <DialogTitle>{property.title}</DialogTitle>
-                                        <DialogDescription>{property.address}, {property.city}, {property.state}</DialogDescription>
-                                    </DialogHeader>
-                                    <p>{property.description}</p>
-                                </DialogContent>
-                                </Dialog>
+                                    </Link>
+                                </Button>
                             </div>
                         </div>
                     </div>

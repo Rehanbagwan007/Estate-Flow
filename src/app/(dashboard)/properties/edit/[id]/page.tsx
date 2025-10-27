@@ -8,9 +8,15 @@ import Link from "next/link";
 
 export default async function EditPropertyPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
+  const { data: {user} } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (!profile || !['super_admin', 'admin', 'agent'].includes(profile.role)) redirect('/dashboard');
+  
   const { data: property, error } = await supabase
     .from('properties')
-    .select('*')
+    .select('*, property_media(*)')
     .eq('id', params.id)
     .single();
 
