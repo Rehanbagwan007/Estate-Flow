@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { getInitials, getStatusVariant } from "@/lib/utils"
+import { format } from 'date-fns'
 
 interface LeadsTableProps {
   leads: (Lead & { profile: Profile | null })[]
@@ -35,6 +36,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           <TableHead className="hidden md:table-cell">Contact</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="hidden md:table-cell">Source</TableHead>
+          <TableHead className="hidden lg:table-cell">Date</TableHead>
           <TableHead className="hidden md:table-cell">Assigned To</TableHead>
           <TableHead>
             <span className="sr-only">Actions</span>
@@ -55,6 +57,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
               <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
             </TableCell>
             <TableCell className="hidden md:table-cell">{lead.source}</TableCell>
+            <TableCell className="hidden lg:table-cell">{format(new Date(lead.created_at), 'PP')}</TableCell>
             <TableCell className="hidden md:table-cell">
               {lead.profile ? (
                 <div className="flex items-center gap-2">

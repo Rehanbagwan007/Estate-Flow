@@ -2,9 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import type { Lead, Profile } from '@/lib/types';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Facebook, Instagram, MessageSquare } from 'lucide-react';
-import { OlxLogo, NinetyNineAcresLogo } from '@/components/icons/platforms';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { startOfDay, startOfWeek, startOfMonth, startOfYear, endOfDay, endOfWeek, endOfMonth, endOfYear } from 'date-fns';
 
 type LeadWithProfile = Lead & { profile: Profile | null };
 
@@ -18,63 +23,118 @@ const PLATFORMS = {
     INSTAGRAM: 'Instagram',
     WHATSAPP: 'WhatsApp',
     OLX: 'OLX',
-    NINETY_NINE_ACRES: '99acres'
+    NINETY_NINE_ACRES: '99acres',
+    MANUAL: 'Manual',
 };
 
 export function LeadsFilters({ allLeads, onFilterChange }: LeadsFiltersProps) {
   const [leadStatus, setLeadStatus] = useState<string>('all');
-  const [platformSources, setPlatformSources] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<string>('all');
+  const [platformSource, setPlatformSource] = useState<string>('all');
 
   useEffect(() => {
     let filtered = allLeads;
 
     // Filter by lead status
     if (leadStatus !== 'all') {
-      filtered = filtered.filter(lead => lead.status.toLowerCase() === leadStatus);
+      filtered = filtered.filter(lead => lead.status === leadStatus);
     }
     
-    // Filter by platform sources
-    if (platformSources.length > 0) {
+    // Filter by platform source
+    if (platformSource !== 'all') {
       filtered = filtered.filter(lead => 
-        platformSources.some(source => lead.source?.toLowerCase().includes(source.toLowerCase()))
+        lead.source?.toLowerCase().includes(platformSource.toLowerCase())
       );
     }
 
+    // Filter by date range
+    if (dateRange !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date;
+
+      switch(dateRange) {
+        case 'today':
+          startDate = startOfDay(now);
+          endDate = endOfDay(now);
+          break;
+        case 'this_week':
+          startDate = startOfWeek(now);
+          endDate = endOfWeek(now);
+          break;
+        case 'this_month':
+          startDate = startOfMonth(now);
+          endDate = endOfMonth(now);
+          break;
+        case 'this_year':
+            startDate = startOfYear(now);
+            endDate = endOfYear(now);
+            break;
+        default:
+          startDate = new Date(0); // far past
+          endDate = new Date(); // now
+          break;
+      }
+
+      filtered = filtered.filter(lead => {
+        const leadDate = new Date(lead.created_at);
+        return leadDate >= startDate && leadDate <= endDate;
+      });
+    }
+
     onFilterChange(filtered);
-  }, [leadStatus, platformSources, allLeads, onFilterChange]);
+  }, [leadStatus, platformSource, dateRange, allLeads, onFilterChange]);
 
   return (
-    <div className="flex items-center gap-4">
-       <ToggleGroup type="single" value={leadStatus} onValueChange={(value) => value && setLeadStatus(value)} defaultValue="all">
-          <ToggleGroupItem value="all">All</ToggleGroupItem>
-          <ToggleGroupItem value="hot">Hot</ToggleGroupItem>
-          <ToggleGroupItem value="warm">Warm</ToggleGroupItem>
-          <ToggleGroupItem value="cold">Cold</ToggleGroupItem>
-      </ToggleGroup>
+    <div className="flex flex-wrap items-center gap-4">
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium">Status:</label>
+        <Select value={leadStatus} onValueChange={setLeadStatus}>
+          <SelectTrigger className="w-[120px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="Hot">Hot</SelectItem>
+            <SelectItem value="Warm">Warm</SelectItem>
+            <SelectItem value="Cold">Cold</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-      <ToggleGroup 
-        type="multiple" 
-        variant="outline" 
-        value={platformSources}
-        onValueChange={setPlatformSources}
-        aria-label="Filter by source"
-      >
-        <ToggleGroupItem value={PLATFORMS.FACEBOOK} aria-label="Facebook">
-            <Facebook className="h-4 w-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem value={PLATFORMS.INSTAGRAM} aria-label="Instagram">
-            <Instagram className="h-4 w-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem value={PLATFORMS.WHATSAPP} aria-label="WhatsApp">
-            <MessageSquare className="h-4 w-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem value={PLATFORMS.OLX} aria-label="OLX">
-            <OlxLogo className="h-4 w-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem value={PLATFORMS.NINETY_NINE_ACRES} aria-label="99acres">
-            <NinetyNineAcresLogo className="h-4 w-4" />
-        </ToggleGroupItem>
-      </ToggleGroup>
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium">Date Range:</label>
+        <Select value={dateRange} onValueChange={setDateRange}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Date" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="this_week">This Week</SelectItem>
+            <SelectItem value="this_month">This Month</SelectItem>
+            <SelectItem value="this_year">This Year</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium">Source:</label>
+        <Select value={platformSource} onValueChange={setPlatformSource}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Source" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Platforms</SelectItem>
+            <SelectItem value={PLATFORMS.FACEBOOK}>Facebook</SelectItem>
+            <SelectItem value={PLATFORMS.INSTAGRAM}>Instagram</SelectItem>
+            <SelectItem value={PLATFORMS.WHATSAPP}>WhatsApp</SelectItem>
+            <SelectItem value={PLATFORMS.OLX}>OLX</SelectItem>
+            <SelectItem value={PLATFORMS.NINETY_NINE_ACRES}>99acres</SelectItem>
+            <SelectItem value={PLATFORMS.MANUAL}>Manual Entry</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 }
