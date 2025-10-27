@@ -1,7 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { z } from 'zod';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,9 +39,10 @@ export async function GET(request: NextRequest) {
  * Handles incoming lead data via POST request from Meta.
  */
 export async function POST(request: NextRequest) {
-  console.log("--- Received Webhook POST Payload ---");
+  console.log("--- Received Webhook POST Request ---");
   try {
-    const body = await request.json();
+    const bodyText = await request.text();
+    const body = JSON.parse(bodyText);
     console.log("Payload body:", JSON.stringify(body, null, 2));
 
     // Meta sends a payload with an `entry` array
