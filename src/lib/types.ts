@@ -37,7 +37,7 @@ export type Database = MergeDeep<
         };
         leads: {
           Row: {
-            source?: string;
+            source: string | null;
           }
         }
       };
