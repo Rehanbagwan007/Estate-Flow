@@ -1,3 +1,4 @@
+
 'use client'
 
 import type { Lead, Profile } from "@/lib/types"
