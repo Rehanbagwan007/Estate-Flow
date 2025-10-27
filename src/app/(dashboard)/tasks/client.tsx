@@ -8,14 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
 import { TaskList } from '@/components/tasks/task-list';
-import { TaskCalendar } from '@/components/tasks/task-calendar';
 import type { Profile, Task, TaskMedia, Property } from '@/lib/types';
 import { useTaskStore } from '@/lib/store/task-store';
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -100,12 +93,14 @@ export function TasksClient({ initialTasks, teamMembers, userRole, userId }: Tas
             onCallEnd={handleCallEnd}
         />
       )}
-      <Tabs defaultValue="list">
+      <div className="space-y-4">
         <div className="flex items-center">
-          <TabsList>
-            <TabsTrigger value="list">List</TabsTrigger>
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
-          </TabsList>
+            <TaskFilters 
+                allTasks={tasks as EnrichedTask[]} 
+                teamMembers={teamMembers}
+                onFilterChange={handleFilterChange}
+                showTeamFilter={canCreateTasks}
+              />
           <div className="ml-auto flex items-center gap-2">
             {canCreateTasks && (
                 <Button size="sm" className="h-7 gap-1 text-sm" asChild>
@@ -117,35 +112,16 @@ export function TasksClient({ initialTasks, teamMembers, userRole, userId }: Tas
             )}
           </div>
         </div>
-        <TabsContent value="list">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tasks</CardTitle>
-              <CardDescription>Manage your team's tasks and reminders.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <TaskFilters 
-                allTasks={tasks as EnrichedTask[]} 
-                teamMembers={teamMembers}
-                onFilterChange={handleFilterChange}
-                showTeamFilter={canCreateTasks}
-              />
-              <TaskList tasks={filteredTasks} onCall={handleCallClick} onTaskSelect={setSelectedTask} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="calendar">
-          <Card>
-            <CardHeader>
-              <CardTitle>Task Calendar</CardTitle>
-              <CardDescription>View your team's tasks on a calendar.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <TaskCalendar tasks={tasks} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        <Card>
+          <CardHeader>
+            <CardTitle>Tasks</CardTitle>
+            <CardDescription>Manage your team's tasks and reminders.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TaskList tasks={filteredTasks} onCall={handleCallClick} onTaskSelect={setSelectedTask} />
+          </CardContent>
+        </Card>
+      </div>
     </>
   );
 }
