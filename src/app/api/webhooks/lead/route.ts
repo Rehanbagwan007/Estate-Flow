@@ -55,19 +55,23 @@ export async function POST(request: NextRequest) {
             const formId = leadData.form_id;
             const leadgenId = leadData.leadgen_id;
             
-            // Fetch the actual lead data using the leadgen_id
-            // Note: This requires a Page Access Token with leads_retrieval permission
+            // --- STEP 1: Fetch the actual lead data using the leadgen_id ---
+            // This requires a Page Access Token with leads_retrieval permission.
             const accessToken = process.env.META_ACCESS_TOKEN;
+            if (!accessToken) {
+                throw new Error("META_ACCESS_TOKEN is not configured in environment variables.");
+            }
+
             const leadDetailsResponse = await fetch(`https://graph.facebook.com/v19.0/${leadgenId}?access_token=${accessToken}`);
             const leadDetails = await leadDetailsResponse.json();
             
-            console.log("--- Fetched Lead Details ---", JSON.stringify(leadDetails, null, 2));
+            console.log("--- Fetched Lead Details from Graph API ---", JSON.stringify(leadDetails, null, 2));
 
             if (leadDetails.error) {
               throw new Error(`Failed to fetch lead details: ${leadDetails.error.message}`);
             }
 
-            // Extract fields from the detailed lead data
+            // --- STEP 2: Extract fields from the detailed lead data ---
             let email, phone, fullName;
             for(const field of leadDetails.field_data) {
                 if (field.name === 'full_name') fullName = field.values[0];
@@ -76,15 +80,16 @@ export async function POST(request: NextRequest) {
             }
             
             if (!fullName || !phone) {
-                console.error("Essential lead data (full name or phone) is missing.");
-                continue; // Skip this lead
+                console.error("Essential lead data (full name or phone) is missing from the fetched details.");
+                continue; // Skip this lead and process the next one
             }
 
+            // --- STEP 3: Save the lead to the database ---
             const { error: leadError } = await supabaseAdmin
               .from('leads')
               .insert({
                 first_name: fullName.split(' ')[0], // Simple split for first name
-                last_name: fullName.split(' ').slice(1).join(' '), // The rest is last name
+                last_name: fullName.split(' ').slice(1).join(' ') || fullName.split(' ')[0], // The rest is last name
                 email: email,
                 phone: phone,
                 status: 'Warm', // Default status for new webhook leads
