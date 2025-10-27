@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -44,8 +45,8 @@ export function Sidebar({ userRole }: SidebarProps) {
     // Super Admin & Admin
     { href: '/admin/users', label: 'User Management', icon: UserCheck, roles: ['super_admin', 'admin'] },
     
-    // Properties (Admin, Agent, Customer)
-    { href: '/properties', label: 'Properties', icon: Building2, roles: ['super_admin', 'admin', 'agent', 'customer'] },
+    // Properties (Admin, Agent)
+    { href: '/properties', label: 'Properties', icon: Building2, roles: ['super_admin', 'admin', 'agent'] },
     { href: '/properties/new', label: 'Add Property', icon: Building, roles: ['super_admin', 'admin', 'agent'] },
     
     // Leads (Admin, Agent, Sales roles)
