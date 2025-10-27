@@ -20,39 +20,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
+import { getInitials, getStatusVariant } from "@/lib/utils"
 
 interface LeadsTableProps {
   leads: (Lead & { profile: Profile | null })[]
 }
 
 export function LeadsTable({ leads }: LeadsTableProps) {
-  
-  const getStatusVariant = (status: Lead['status']) => {
-    switch (status) {
-      case 'Hot':
-        return 'destructive'
-      case 'Warm':
-        return 'default'
-      case 'Cold':
-        return 'secondary'
-      default:
-        return 'outline'
-    }
-  }
-
-  const getInitials = (firstName?: string | null, lastName?: string | null) => {
-    const first = firstName?.[0] || '';
-    const last = lastName?.[0] || '';
-    return `${first}${last}`.toUpperCase();
-  };
-
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Client</TableHead>
-          <TableHead>Status</TableHead>
           <TableHead className="hidden md:table-cell">Contact</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="hidden md:table-cell">Source</TableHead>
           <TableHead className="hidden md:table-cell">Assigned To</TableHead>
           <TableHead>
             <span className="sr-only">Actions</span>
@@ -64,22 +46,27 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           <TableRow key={lead.id}>
             <TableCell>
               <div className="font-medium">{lead.first_name} {lead.last_name}</div>
-              <div className="hidden text-sm text-muted-foreground md:inline">
-                {lead.email}
-              </div>
+            </TableCell>
+             <TableCell className="hidden md:table-cell">
+                <div>{lead.email}</div>
+                <div className="text-muted-foreground">{lead.phone}</div>
             </TableCell>
             <TableCell>
               <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
             </TableCell>
-            <TableCell className="hidden md:table-cell">{lead.phone}</TableCell>
+            <TableCell className="hidden md:table-cell">{lead.source}</TableCell>
             <TableCell className="hidden md:table-cell">
-              <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={`https://i.pravatar.cc/150?u=${lead.assigned_to}`} />
-                  <AvatarFallback>{getInitials(lead.profile?.first_name, lead.profile?.last_name)}</AvatarFallback>
-                </Avatar>
-                <span>{lead.profile?.first_name} {lead.profile?.last_name}</span>
-              </div>
+              {lead.profile ? (
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={`https://i.pravatar.cc/150?u=${lead.assigned_to}`} />
+                    <AvatarFallback>{getInitials(lead.profile?.first_name, lead.profile?.last_name)}</AvatarFallback>
+                  </Avatar>
+                  <span>{lead.profile?.first_name} {lead.profile?.last_name}</span>
+                </div>
+              ) : (
+                <Badge variant="outline">Unassigned</Badge>
+              )}
             </TableCell>
             <TableCell>
               <DropdownMenu>

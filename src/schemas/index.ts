@@ -47,6 +47,7 @@ export const leadSchema = z.object({
     phone: z.string().min(10, 'Phone number seems too short').optional(),
     status: z.enum(['Hot', 'Warm', 'Cold']),
     assigned_to: z.string().uuid().optional().nullable(),
+    source: z.string().optional().nullable(),
 });
 
 export const taskSchema = z.object({
@@ -66,5 +67,3 @@ export const reportSchema = z.object({
   travel_distance: z.coerce.number().min(0).optional(),
   site_visit_locations: z.string().optional(),
 });
-
-    

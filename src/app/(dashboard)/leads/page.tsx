@@ -8,15 +8,11 @@ async function getLeads(userId: string, userRole: Profile['role']) {
   
   let query = supabase.from('leads').select('*, profile:profiles(*)');
 
-  // Application-level security check
+  // RLS will handle security, but this provides a client-side performance optimization.
   if (userRole === 'agent' || userRole === 'sales_executive_1' || userRole === 'sales_executive_2') {
     query = query.eq('assigned_to', userId);
-  } else if (userRole !== 'super_admin' && userRole !== 'admin' && userRole !== 'sales_manager') {
-    // If not a manager/admin, and not an agent, they see nothing.
-    return [];
   }
-  // Admins/Managers will see all leads by default (no filter)
-
+  
   const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
@@ -24,6 +20,16 @@ async function getLeads(userId: string, userRole: Profile['role']) {
     return [];
   }
   return data;
+}
+
+async function getTeamMembers(): Promise<Profile[]> {
+    const supabase = createClient();
+    const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, role');
+    if (error) {
+        console.error("Error fetching team members:", error);
+        return [];
+    }
+    return data;
 }
 
 export default async function LeadsPage() {
@@ -41,5 +47,7 @@ export default async function LeadsPage() {
   }
   
   const leads = await getLeads(user.id, profile.role);
-  return <LeadsClient initialLeads={leads} />;
+  const teamMembers = await getTeamMembers();
+
+  return <LeadsClient initialLeads={leads} teamMembers={teamMembers} />;
 }
