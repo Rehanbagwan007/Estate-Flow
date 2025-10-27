@@ -8,13 +8,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Simplified schema, as we'll parse the fields manually
-const leadSchema = z.object({
-  full_name: z.string(),
-  email: z.string().email().optional(),
-  phone_number: z.string(),
-});
-
 /**
  * Handles the webhook verification GET request from Meta.
  */
@@ -55,10 +48,12 @@ export async function POST(request: NextRequest) {
             const formId = leadData.form_id;
             const leadgenId = leadData.leadgen_id;
             
+            console.log(`Processing leadgen_id: ${leadgenId} from form_id: ${formId}`);
+            
             // --- STEP 1: Fetch the actual lead data using the leadgen_id ---
-            // This requires a Page Access Token with leads_retrieval permission.
             const accessToken = process.env.META_ACCESS_TOKEN;
             if (!accessToken) {
+                console.error("CRITICAL: META_ACCESS_TOKEN is not configured.");
                 throw new Error("META_ACCESS_TOKEN is not configured in environment variables.");
             }
 
@@ -68,28 +63,37 @@ export async function POST(request: NextRequest) {
             console.log("--- Fetched Lead Details from Graph API ---", JSON.stringify(leadDetails, null, 2));
 
             if (leadDetails.error) {
+              console.error(`Graph API error fetching lead details for ${leadgenId}:`, leadDetails.error);
               throw new Error(`Failed to fetch lead details: ${leadDetails.error.message}`);
             }
 
-            // --- STEP 2: Extract fields from the detailed lead data ---
-            let email, phone, fullName;
+            // --- STEP 2: Robustly extract fields from the detailed lead data ---
+            const fieldData: { [key: string]: string } = {};
             for(const field of leadDetails.field_data) {
-                if (field.name === 'full_name') fullName = field.values[0];
-                if (field.name === 'email') email = field.values[0];
-                if (field.name === 'phone_number') phone = field.values[0];
+                fieldData[field.name] = field.values[0];
             }
             
+            const fullName = fieldData.full_name || '';
+            const email = fieldData.email || null;
+            const phone = fieldData.phone_number || null;
+
             if (!fullName || !phone) {
-                console.error("Essential lead data (full name or phone) is missing from the fetched details.");
+                console.error("Essential lead data (full_name or phone_number) is missing from the fetched details.");
                 continue; // Skip this lead and process the next one
             }
+            
+            const nameParts = fullName.split(' ');
+            const firstName = nameParts[0];
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
 
             // --- STEP 3: Save the lead to the database ---
+            console.log(`Attempting to insert lead: ${firstName} ${lastName}`);
             const { error: leadError } = await supabaseAdmin
               .from('leads')
               .insert({
-                first_name: fullName.split(' ')[0], // Simple split for first name
-                last_name: fullName.split(' ').slice(1).join(' ') || fullName.split(' ')[0], // The rest is last name
+                first_name: firstName,
+                last_name: lastName,
                 email: email,
                 phone: phone,
                 status: 'Warm', // Default status for new webhook leads
@@ -100,7 +104,7 @@ export async function POST(request: NextRequest) {
               console.error('Supabase error creating lead:', leadError);
               // Don't throw, just log it and continue processing other leads
             } else {
-              console.log(`Successfully created lead for ${fullName}`);
+              console.log(`Successfully created lead for ${fullName} in the database.`);
             }
           }
         }
