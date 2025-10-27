@@ -13,7 +13,8 @@ import {
     MapPin,
     Edit,
     Trash2,
-    Share2
+    Share2,
+    Building2
 } from 'lucide-react';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import Link from "next/link";
@@ -195,4 +196,3 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
         </div>
     );
 }
-
