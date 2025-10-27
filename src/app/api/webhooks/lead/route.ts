@@ -12,7 +12,7 @@ const supabaseAdmin = createClient(
  * Handles the webhook verification GET request from Meta.
  */
 export async function GET(request: NextRequest) {
-  console.log(request)
+  console.log("--- Received GET request on webhook ---", request.url);
   const webhookSecret = process.env.WEBHOOK_SECRET;
   const { searchParams } = new URL(request.url);
   
@@ -23,11 +23,15 @@ export async function GET(request: NextRequest) {
   // Check if mode and token are present, and if the token matches the secret
   if (mode === 'subscribe' && token === webhookSecret) {
     // Respond with the challenge to verify the webhook
-    console.log("Webhook verified successfully!");
+    console.log("Webhook verification successful! Responding with challenge.");
     return new NextResponse(challenge, { status: 200 });
   } else {
     // Respond with '403 Forbidden' if tokens do not match
-    console.error("Webhook verification failed. Tokens did not match.");
+    console.error("Webhook verification failed. Details:", {
+      received_token: token,
+      expected_token: webhookSecret,
+      mode: mode,
+    });
     return new NextResponse('Verification token mismatch', { status: 403 });
   }
 }
@@ -36,10 +40,10 @@ export async function GET(request: NextRequest) {
  * Handles incoming lead data via POST request from Meta.
  */
 export async function POST(request: NextRequest) {
-  console.log(request)
+  console.log("--- Received Webhook POST Payload ---");
   try {
     const body = await request.json();
-    console.log("--- Received Webhook Payload ---", JSON.stringify(body, null, 2));
+    console.log("Payload body:", JSON.stringify(body, null, 2));
 
     // Meta sends a payload with an `entry` array
     if (body.object === 'page' && body.entry) {
