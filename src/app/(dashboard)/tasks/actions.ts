@@ -1,3 +1,4 @@
+
 'use server';
 
 import { z } from 'zod';
@@ -5,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { Task, TaskStatus } from '@/lib/types';
 import { taskSchema, reportSchema } from '@/schemas';
+import { whatsappService } from '@/lib/notifications/whatsapp';
 
 export async function createTask(
   prevState: { message: string; success?: boolean },
@@ -235,4 +237,19 @@ export async function submitTaskReport(taskId: string, formData: FormData) {
   return { success: true };
 }
 
+export async function sendWhatsAppMessage(phone: string, customerName: string): Promise<{success: boolean, error?: string}> {
+  if (!phone) {
+      return { success: false, error: 'Phone number is missing.' };
+  }
+
+  const message = `Hello ${customerName}, this is a follow-up message from EstateFlow CRM. Please let us know if you have any questions.`;
+
+  const success = await whatsappService.sendSimpleMessage(phone, message);
+  
+  if (success) {
+      return { success: true };
+  } else {
+      return { success: false, error: 'Failed to send WhatsApp message.' };
+  }
+}
     

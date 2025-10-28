@@ -4,13 +4,13 @@
 import { useState, useTransition } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import type { Task, Property, Profile, TaskMedia, TaskStatus } from '@/lib/types';
-import { Building2, User, MapPin, Bed, Bath, Square, Phone, Link as LinkIcon, Camera, Loader2, Eye, FileText } from 'lucide-react';
+import { Building2, User, MapPin, Bed, Bath, Square, Phone, Link as LinkIcon, Camera, Loader2, Eye, FileText, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { updateTaskStatus } from '@/app/(dashboard)/tasks/actions';
+import { updateTaskStatus, sendWhatsAppMessage } from '@/app/(dashboard)/tasks/actions';
 import { Label } from '@/components/ui/label';
 import { TaskReportDialog } from './task-report-dialog';
 import { formatCurrency } from '@/lib/utils';
@@ -32,6 +32,7 @@ interface TaskDetailsDialogProps {
 export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: TaskDetailsDialogProps) {
     const { toast } = useToast();
     const [isUpdating, startTransition] = useTransition();
+    const [isSendingWhatsApp, startWhatsAppTransition] = useTransition();
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
     if (!task) return null;
@@ -50,6 +51,21 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
             onClose();
         }
     };
+
+    const handleWhatsAppClick = () => {
+        if (!effectiveCustomerPhone) {
+            toast({ title: 'Error', description: 'Customer phone number is not available.', variant: 'destructive' });
+            return;
+        }
+        startWhatsAppTransition(async () => {
+            const result = await sendWhatsAppMessage(effectiveCustomerPhone, customerName);
+            if (result.success) {
+                toast({ title: 'Success', description: 'WhatsApp message sent.' });
+            } else {
+                toast({ title: 'Error', description: result.error, variant: 'destructive' });
+            }
+        });
+    }
     
     const handleStatusChange = (newStatus: TaskStatus) => {
         startTransition(async () => {
@@ -174,14 +190,24 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
                 </ScrollArea>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Close</Button>
-                     {task.task_type === 'Call' && effectiveCustomerPhone && (
-                        <Button
-                            onClick={handleCallClick}
-                            disabled={task.status === 'Done'}
-                        >
-                            <Phone className="mr-2 h-4 w-4" />
-                            Call Customer
-                        </Button>
+                     {(task.task_type === 'Call' || task.task_type === 'Follow-up') && effectiveCustomerPhone && (
+                        <>
+                            <Button
+                                onClick={handleWhatsAppClick}
+                                disabled={task.status === 'Done' || isSendingWhatsApp}
+                                variant="secondary"
+                            >
+                                {isSendingWhatsApp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
+                                WhatsApp
+                            </Button>
+                            <Button
+                                onClick={handleCallClick}
+                                disabled={task.status === 'Done'}
+                            >
+                                <Phone className="mr-2 h-4 w-4" />
+                                Call Customer
+                            </Button>
+                        </>
                     )}
                      {task.task_type === 'Site Visit' && (
                         <Button
@@ -198,7 +224,3 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
         </>
     );
 }
-
-    
-
-    

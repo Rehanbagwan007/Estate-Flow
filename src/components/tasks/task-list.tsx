@@ -6,11 +6,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Building2, Phone, User, Info, MapPin } from 'lucide-react';
+import { Building2, Phone, User, Info, MapPin, MessageSquare, Loader2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { getInitials } from '@/lib/utils';
+import { useTransition } from 'react';
+import { sendWhatsAppMessage } from '@/app/(dashboard)/tasks/actions';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface EnrichedTask extends Task {
@@ -27,6 +30,27 @@ interface TaskListProps {
 }
 
 export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
+  const [isSendingWhatsApp, startWhatsAppTransition] = useTransition();
+  const { toast } = useToast();
+
+  const handleWhatsAppClick = (e: React.MouseEvent, task: EnrichedTask) => {
+    e.stopPropagation(); // Prevent card click
+    const customerName = task.customer ? `${task.customer.first_name} ${task.customer.last_name}` : 'the customer';
+    const effectiveCustomerPhone = task.customer?.phone || task.customer_phone;
+    if (!effectiveCustomerPhone) {
+      toast({ title: 'Error', description: 'Customer phone number is not available.', variant: 'destructive' });
+      return;
+    }
+    startWhatsAppTransition(async () => {
+        const result = await sendWhatsAppMessage(effectiveCustomerPhone, customerName);
+        if (result.success) {
+            toast({ title: 'Success', description: 'WhatsApp message sent.' });
+        } else {
+            toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        }
+    });
+  }
+
   return (
       <div className="space-y-4">
         {tasks.length === 0 ? (
@@ -37,6 +61,7 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
         ) : tasks.map((task) => {
           const customerName = task.customer ? `${task.customer.first_name} ${task.customer.last_name}` : 'the customer';
           const effectiveCustomerPhone = task.customer?.phone || task.customer_phone;
+          const isActionable = task.task_type === 'Call' || task.task_type === 'Follow-up';
           
           return (
           <Card key={task.id} className={task.status === 'Done' ? 'bg-muted/50' : ''}>
@@ -90,19 +115,33 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
                       <Info className="mr-2 h-4 w-4" />
                       Details
                   </Button>
-                  {task.task_type === 'Call' && effectiveCustomerPhone && (
+                  {isActionable && effectiveCustomerPhone && (
+                    <>
+                      <Button 
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => handleWhatsAppClick(e, task)}
+                          disabled={task.status === 'Done' || isSendingWhatsApp}
+                      >
+                           {isSendingWhatsApp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
+                          WhatsApp
+                      </Button>
                       <Button 
                           size="sm"
-                          onClick={() => onCall({ 
-                              customerId: task.customer?.id || 'unknown', 
-                              customerPhone: effectiveCustomerPhone, 
-                              customerName: customerName
-                          })}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCall({ 
+                                customerId: task.customer?.id || 'unknown', 
+                                customerPhone: effectiveCustomerPhone, 
+                                customerName: customerName
+                            })
+                          }}
                           disabled={task.status === 'Done'}
                       >
                           <Phone className="mr-2 h-4 w-4" />
                           Call
                       </Button>
+                    </>
                   )}
               </CardFooter>
           </Card>
