@@ -153,7 +153,7 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
                             <Label htmlFor="status">Task Status</Label>
                             <div className="flex gap-2">
                                 <Select defaultValue={task.status} onValueChange={(value: TaskStatus) => handleStatusChange(value)}>
-                                <SelectTrigger>
+                                <SelectTrigger id="status">
                                     <SelectValue placeholder="Set status" />
                                 </SelectTrigger>
                                 <SelectContent>
