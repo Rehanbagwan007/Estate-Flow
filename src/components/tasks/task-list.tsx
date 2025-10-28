@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Building2, Phone, User, Info, MapPin, MessageSquare, Loader2 } from 'lucide-react';
+import { Building2, Phone, User, Info, MapPin, MessageSquare, Loader2, ListTodo } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -68,7 +68,7 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
               <CardHeader className="flex flex-row items-start gap-4 space-y-0 p-4">
                   <div className="grid gap-1 flex-1">
                       <CardTitle className="text-lg flex items-center justify-between">
-                        <span>{task.title}</span>
+                        <span onClick={() => onTaskSelect(task)} className="cursor-pointer hover:underline">{task.title}</span>
                         <Badge variant="outline">{task.task_type}</Badge>
                       </CardTitle>
                       <CardDescription>
@@ -149,6 +149,3 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
       </div>
   );
 }
-
-// Add ListTodo to the imports
-import { ListTodo } from 'lucide-react';
