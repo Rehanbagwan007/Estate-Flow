@@ -60,7 +60,7 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
         ) : tasks.map((task) => {
           const customerName = task.customer ? `${task.customer.first_name} ${task.customer.last_name}` : 'the customer';
           const effectiveCustomerPhone = task.customer?.phone || task.customer_phone;
-          const isActionable = task.task_type === 'Call' || task.task_type === 'Follow-up';
+          const isActionable = (task.task_type === 'Call' || task.task_type === 'Follow-up') && effectiveCustomerPhone;
           
           return (
           <Card key={task.id} className={task.status === 'Done' ? 'bg-muted/50' : ''}>
@@ -114,7 +114,7 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
                       <Info className="mr-2 h-4 w-4" />
                       Details
                   </Button>
-                  {isActionable && effectiveCustomerPhone && (
+                  {isActionable && (
                     <>
                       <Button 
                           variant="secondary"
@@ -131,7 +131,7 @@ export function TaskList({ tasks, onCall, onTaskSelect }: TaskListProps) {
                             e.stopPropagation();
                             onCall({ 
                                 customerId: task.customer?.id || 'unknown', 
-                                customerPhone: effectiveCustomerPhone, 
+                                customerPhone: effectiveCustomerPhone!, 
                                 customerName: customerName
                             })
                           }}
