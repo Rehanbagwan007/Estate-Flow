@@ -2,11 +2,10 @@
 'use client';
 
 import type { Task, Property, Profile, TaskMedia } from '@/lib/types';
-import { Checkbox } from '@/components/ui/checkbox';
 import { formatDistanceToNow } from 'date-fns';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '../ui/button';
-import { Building2, Phone, User, Info, MapPin, MessageSquare, Loader2, ListTodo } from 'lucide-react';
+import { Building2, Phone, User, Info, MessageSquare, Loader2, ListTodo } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
