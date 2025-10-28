@@ -3,8 +3,8 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { Profile, Task, Lead, CallLog, Appointment, PropertyInterest, Property } from '@/lib/types';
-import { ListTodo, Users, Phone, Calendar, Star, Heart, Building2 } from 'lucide-react';
+import type { Profile, Task, Lead, CallLog, Appointment, PropertyInterest, Property, JobReport } from '@/lib/types';
+import { ListTodo, Users, Phone, Calendar, Star, Heart, Building2, DollarSign } from 'lucide-react';
 import { Pie, PieChart, Cell, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import {
   ChartContainer,
@@ -14,6 +14,7 @@ import {
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { formatCurrency } from '@/lib/utils';
 
 interface EnrichedInterest extends PropertyInterest {
     properties: Pick<Property, 'id' | 'title'> | null;
@@ -34,6 +35,8 @@ interface PerformanceData {
     calls: CallLog[];
     appointments: EnrichedAppointment[];
     interests: EnrichedInterest[];
+    jobReports: JobReport[];
+    salaryParameters: { [key: string]: number };
 }
 
 interface UserPerformanceDashboardProps {
@@ -142,7 +145,7 @@ const CustomerActivityDashboard = ({ profile, interests, appointments }: { profi
 };
 
 
-const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments }: { profile: Profile, tasks: Task[], leads: Lead[], calls: CallLog[], appointments: Appointment[] }) => {
+const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments, jobReports, salaryParameters }: PerformanceData) => {
   const kpis = {
     tasksCompleted: tasks.filter(t => t.status === 'Done').length,
     activeLeads: leads.filter(l => ['Hot', 'Warm'].includes(l.status)).length,
@@ -150,6 +153,18 @@ const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments 
     meetingsHeld: appointments.filter(a => new Date(a.scheduled_at) < new Date()).length
   };
   
+  const salary = useMemo(() => {
+    const callPay = (calls.filter(c => c.call_status === 'completed').length) * (salaryParameters.per_call_rate || 0);
+    const meetingPay = (appointments.filter(a => a.status === 'completed').length) * (salaryParameters.per_meeting_rate || 0);
+    const travelPay = jobReports.reduce((total, report) => total + (report.travel_distance_km || 0), 0) * (salaryParameters.per_km_travel_rate || 0);
+    return {
+        total: callPay + meetingPay + travelPay,
+        callPay,
+        meetingPay,
+        travelPay
+    };
+  }, [calls, appointments, jobReports, salaryParameters]);
+
   const leadStatusData = useMemo(() => {
     const statusCounts = leads.reduce((acc, lead) => {
         const status = lead.status as keyof typeof leadChartConfig;
@@ -238,8 +253,24 @@ const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments 
         </Card>
       </div>
 
-       <div className="grid gap-4 md:grid-cols-2">
-          <Card>
+       <div className="grid gap-4 md:grid-cols-3">
+          <Card className="col-span-1">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <DollarSign /> Estimated Salary
+                </CardTitle>
+                <CardDescription>Based on completed activities and current rates.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="text-4xl font-bold">{formatCurrency(salary.total)}</div>
+                <div className="space-y-2 mt-4 text-sm text-muted-foreground">
+                    <div className="flex justify-between"><span>Calls ({calls.filter(c => c.call_status === 'completed').length}):</span> <span>{formatCurrency(salary.callPay)}</span></div>
+                    <div className="flex justify-between"><span>Meetings ({appointments.filter(a => a.status === 'completed').length}):</span> <span>{formatCurrency(salary.meetingPay)}</span></div>
+                    <div className="flex justify-between"><span>Travel ({jobReports.reduce((total, report) => total + (report.travel_distance_km || 0), 0)} km):</span> <span>{formatCurrency(salary.travelPay)}</span></div>
+                </div>
+            </CardContent>
+          </Card>
+          <Card className="col-span-1">
             <CardHeader>
               <CardTitle>Lead Conversion Status</CardTitle>
               <CardDescription>Distribution of the user's assigned leads.</CardDescription>
@@ -257,7 +288,7 @@ const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments 
                 </ChartContainer>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="col-span-1">
              <CardHeader>
                 <CardTitle>Monthly Task Completion</CardTitle>
                 <CardDescription>Tasks completed over the last 6 months.</CardDescription>
@@ -322,11 +353,11 @@ const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments 
 
 
 export function UserPerformanceDashboard({ data }: UserPerformanceDashboardProps) {
-  const { profile, tasks, leads, calls, appointments, interests } = data;
+  const { profile, interests, appointments } = data;
 
   if (profile.role === 'customer') {
       return <CustomerActivityDashboard profile={profile} interests={interests} appointments={appointments} />;
   }
 
-  return <AgentPerformanceDashboard profile={profile} tasks={tasks} leads={leads} calls={calls} appointments={appointments} />;
+  return <AgentPerformanceDashboard {...data} />;
 }

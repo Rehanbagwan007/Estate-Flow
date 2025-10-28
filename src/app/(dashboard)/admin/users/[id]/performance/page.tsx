@@ -1,10 +1,11 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { redirect, notFound } from 'next/navigation';
-import type { Profile, Task, Lead, CallLog, Appointment, PropertyInterest, Property } from '@/lib/types';
+import type { Profile, Task, Lead, CallLog, Appointment, PropertyInterest, Property, JobReport } from '@/lib/types';
 import { UserPerformanceDashboard } from './user-performance-dashboard';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import Link from 'next/link';
+import { getSalaryParameters } from '@/app/(dashboard)/admin/settings/actions';
 
 interface EnrichedInterest extends PropertyInterest {
     properties: Pick<Property, 'id' | 'title'> | null;
@@ -26,6 +27,8 @@ type PerformanceData = {
     calls: CallLog[];
     appointments: EnrichedAppointment[];
     interests: EnrichedInterest[];
+    jobReports: JobReport[];
+    salaryParameters: { [key: string]: number };
 }
 
 async function getUserPerformanceData(userId: string): Promise<PerformanceData | null> {
@@ -36,6 +39,8 @@ async function getUserPerformanceData(userId: string): Promise<PerformanceData |
         console.error('Error fetching user profile:', profileError);
         return null;
     }
+
+    const salaryParameters = await getSalaryParameters();
 
     if (profile.role === 'customer') {
         const [interestsRes, appointmentsRes] = await Promise.all([
@@ -64,17 +69,20 @@ async function getUserPerformanceData(userId: string): Promise<PerformanceData |
             tasks: [],
             leads: [],
             calls: [],
+            jobReports: [],
+            salaryParameters: {},
             interests: (interestsRes.data as any) || [],
             appointments: (appointmentsRes.data as any) || []
         };
     }
 
     // Default data fetching for non-customer roles
-    const [tasksRes, leadsRes, callsRes, appointmentsRes] = await Promise.all([
+    const [tasksRes, leadsRes, callsRes, appointmentsRes, jobReportsRes] = await Promise.all([
         supabase.from('tasks').select('*, property:related_property_id(title)').eq('assigned_to', userId).order('created_at', { ascending: false }),
         supabase.from('leads').select('*').eq('assigned_to', userId).order('created_at', { ascending: false }),
         supabase.from('call_logs').select('*').eq('agent_id', userId).order('created_at', { ascending: false }),
-        supabase.from('appointments').select('*, agent:agent_id(id, first_name, last_name), property:property_interest_id(properties(title))').eq('agent_id', userId).order('created_at', { ascending: false })
+        supabase.from('appointments').select('*, agent:agent_id(id, first_name, last_name), property:property_interest_id(properties(title))').eq('agent_id', userId).order('created_at', { ascending: false }),
+        supabase.from('job_reports').select('*').eq('user_id', userId)
     ]);
 
     return {
@@ -83,7 +91,9 @@ async function getUserPerformanceData(userId: string): Promise<PerformanceData |
         leads: leadsRes.data || [],
         calls: callsRes.data || [],
         appointments: (appointmentsRes.data as any) || [],
-        interests: []
+        interests: [],
+        jobReports: jobReportsRes.data || [],
+        salaryParameters,
     };
 }
 
