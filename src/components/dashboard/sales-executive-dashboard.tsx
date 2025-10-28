@@ -42,46 +42,46 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
     const [callTarget, setCallTarget] = useState<{ customerId: string; customerPhone: string; customerName: string } | null>(null);
     const [selectedTask, setSelectedTask] = useState<EnrichedTask | null>(null);
 
-    useEffect(() => {
+    const fetchData = async () => {
         const supabase = createClient();
-        const fetchData = async () => {
-            setIsLoading(true);
-            const [
-                assignmentsResult,
-                appointmentsResult,
-                callLogsResult,
-                leadsResult,
-                tasksResult
-            ] = await Promise.all([
-                supabase.from('agent_assignments').select('*, customer:profiles!agent_assignments_customer_id_fkey(*)').eq('agent_id', userId),
-                supabase.from('appointments').select('*, customer:profiles!appointments_customer_id_fkey(*)').eq('agent_id', userId),
-                supabase.from('call_logs').select('*, customer:profiles!call_logs_customer_id_fkey(*)').eq('agent_id', userId),
-                supabase.from('leads').select('*').eq('assigned_to', userId),
-                supabase.from('tasks')
-                    .select(`
-                        *,
-                        property:related_property_id(*, property_media(file_path)),
-                        customer:related_customer_id(*)
-                    `)
-                    .eq('assigned_to', userId)
-                    .order('created_at', { ascending: false }),
-            ]);
+        setIsLoading(true);
+        const [
+            assignmentsResult,
+            appointmentsResult,
+            callLogsResult,
+            leadsResult,
+            tasksResult
+        ] = await Promise.all([
+            supabase.from('agent_assignments').select('*, customer:profiles!agent_assignments_customer_id_fkey(*)').eq('agent_id', userId),
+            supabase.from('appointments').select('*, customer:profiles!appointments_customer_id_fkey(*)').eq('agent_id', userId),
+            supabase.from('call_logs').select('*, customer:profiles!call_logs_customer_id_fkey(*)').eq('agent_id', userId),
+            supabase.from('leads').select('*').eq('assigned_to', userId),
+            supabase.from('tasks')
+                .select(`
+                    *,
+                    property:related_property_id(*, property_media(file_path)),
+                    customer:related_customer_id(*)
+                `)
+                .eq('assigned_to', userId)
+                .order('created_at', { ascending: false }),
+        ]);
 
-            setAssignments((assignmentsResult.data as EnrichedAssignment[]) || []);
-            setAppointments(appointmentsResult.data || []);
-            setCallLogs(callLogsResult.data || []);
-            setLeads(leadsResult.data || []);
-            
-            const enrichedTasks = (tasksResult.data || []).map((task: any) => ({
-                ...task,
-                property: task.property,
-                customer: task.customer,
-            })) as EnrichedTask[];
-            setTasks(enrichedTasks);
+        setAssignments((assignmentsResult.data as EnrichedAssignment[]) || []);
+        setAppointments(appointmentsResult.data || []);
+        setCallLogs(callLogsResult.data || []);
+        setLeads(leadsResult.data || []);
+        
+        const enrichedTasks = (tasksResult.data || []).map((task: any) => ({
+            ...task,
+            property: task.property,
+            customer: task.customer,
+        })) as EnrichedTask[];
+        setTasks(enrichedTasks);
 
-            setIsLoading(false);
-        };
+        setIsLoading(false);
+    };
 
+    useEffect(() => {
         fetchData();
     }, [userId]);
     
@@ -95,6 +95,12 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
     
     const handleCallEnd = () => {
         setCallTarget(null);
+    };
+
+    const handleTaskUpdate = () => {
+        setSelectedTask(null);
+        // Refetch tasks to get the latest status
+        fetchData();
     };
 
     // Calculate metrics
@@ -121,6 +127,7 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
         isOpen={!!selectedTask}
         onClose={() => setSelectedTask(null)}
         onCall={handleCallClick}
+        onUpdate={handleTaskUpdate}
       />
       <div className="space-y-6">
         <div>
