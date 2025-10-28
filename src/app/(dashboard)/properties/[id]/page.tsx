@@ -78,6 +78,21 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
     if (!property) {
         notFound();
     }
+    
+    let isAlreadyInterested = false;
+    if (profile.role === 'customer') {
+        const { data: interest, error } = await supabase
+            .from('property_interests')
+            .select('id')
+            .eq('customer_id', user.id)
+            .eq('property_id', property.id)
+            .maybeSingle();
+
+        if (interest) {
+            isAlreadyInterested = true;
+        }
+    }
+
 
     const isAdminOrAgent = ['super_admin', 'admin', 'agent'].includes(profile.role);
 
@@ -211,6 +226,7 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                              <PropertyCustomerActions
                                 propertyId={property.id}
                                 propertyTitle={property.title || 'this property'}
+                                isAlreadyInterested={isAlreadyInterested}
                              />
                         )}
                     </div>

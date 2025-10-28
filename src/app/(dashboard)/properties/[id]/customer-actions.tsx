@@ -16,9 +16,10 @@ import type { PropertyInterest } from '@/lib/types';
 interface PropertyCustomerActionsProps {
     propertyId: string;
     propertyTitle: string;
+    isAlreadyInterested: boolean;
 }
 
-export function PropertyCustomerActions({ propertyId, propertyTitle }: PropertyCustomerActionsProps) {
+export function PropertyCustomerActions({ propertyId, propertyTitle, isAlreadyInterested }: PropertyCustomerActionsProps) {
     const router = useRouter();
     
     const handleSuccess = (interest: PropertyInterest) => {
@@ -29,8 +30,9 @@ export function PropertyCustomerActions({ propertyId, propertyTitle }: PropertyC
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button className="w-full" size="lg">
-                    <Heart className="mr-2" /> I'm Interested
+                <Button className="w-full" size="lg" disabled={isAlreadyInterested}>
+                    <Heart className="mr-2" />
+                    {isAlreadyInterested ? "Already Interested" : "I'm Interested"}
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">

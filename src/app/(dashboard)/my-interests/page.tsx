@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { deleteInterest } from './actions';
 import { formatCurrency } from '@/lib/utils';
+import Link from 'next/link';
 
 export default async function MyInterestsPage() {
   const supabase = createClient();
@@ -52,12 +53,12 @@ export default async function MyInterestsPage() {
         id,
         title,
         price,
-        address,
         city,
         state,
         bedrooms,
         bathrooms,
-        property_type
+        property_type,
+        status
       )
     `)
     .eq('customer_id', user.id)
@@ -72,7 +73,7 @@ export default async function MyInterestsPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">My Property Interests</h1>
         <p className="text-muted-foreground">
-          Properties you've shown interest in and their status
+          Properties you've shown interest in and their status.
         </p>
       </div>
 
@@ -100,7 +101,7 @@ export default async function MyInterestsPage() {
               {interests?.filter(i => i.status === 'pending').length || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Awaiting response
+              Awaiting agent assignment
             </p>
           </CardContent>
         </Card>
@@ -112,10 +113,10 @@ export default async function MyInterestsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {interests?.filter(i => i.status === 'contacted').length || 0}
+              {interests?.filter(i => i.status === 'contacted' || i.status === 'assigned' || i.status === 'meeting_scheduled').length || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Agent has contacted you
+              Agent is in touch
             </p>
           </CardContent>
         </Card>
@@ -125,7 +126,7 @@ export default async function MyInterestsPage() {
         <CardHeader>
           <CardTitle>Your Property Interests</CardTitle>
           <CardDescription>
-            Track the status of properties you're interested in
+            Track the status of properties you're interested in.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -133,8 +134,10 @@ export default async function MyInterestsPage() {
             {!interests || interests.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Heart className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                <p>No property interests yet.</p>
-                <p className="text-sm">Browse properties to show your interest!</p>
+                <p>You haven't shown interest in any properties yet.</p>
+                <Button asChild variant="link" className="mt-2">
+                    <Link href="/dashboard">Browse Properties</Link>
+                </Button>
               </div>
             ) : (
               interests?.map((interest) => (
@@ -144,23 +147,24 @@ export default async function MyInterestsPage() {
                       <Building2 className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">{interest.property?.title || 'Property not available'}</p>
+                      <Link href={`/properties/${interest.property?.id}`} className="font-medium hover:underline">
+                        {interest.property?.title || 'Property not available'}
+                      </Link>
                       <p className="text-sm text-muted-foreground">
                         {interest.property?.city ? `${interest.property.city}, ${interest.property.state} • ${formatCurrency(interest.property.price || 0)}` : 'Details not available'}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {interest.property ? `${interest.property.bedrooms} bed • ${interest.property.bathrooms} bath` : ''}
-                      </p>
+                       <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline">{interest.interest_level}</Badge>
+                          <Badge variant={interest.status === 'contacted' || interest.status === 'assigned' ? 'default' : 'secondary'}>
+                            {interest.status}
+                          </Badge>
+                       </div>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant="outline">{interest.interest_level}</Badge>
-                    <Badge variant={interest.status === 'contacted' ? 'default' : 'secondary'}>
-                      {interest.status}
-                    </Badge>
                      <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="icon">
+                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
                             <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>

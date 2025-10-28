@@ -1,14 +1,8 @@
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import type { PropertyInterest } from '@/lib/types';
-
-interface InterestResult {
-  success: boolean;
-  message: string;
-  interest?: PropertyInterest | null;
-}
 
 export async function deleteInterest(interestId: string) {
   const supabase = createClient();
@@ -48,7 +42,8 @@ export async function deleteInterest(interestId: string) {
   }
 
   revalidatePath('/(dashboard)/my-interests');
-  revalidatePath('/(dashboard)/customer-dashboard');
+  revalidatePath('/dashboard');
+  revalidatePath('/(dashboard)/properties'); // Revalidate properties to update the button state
 
   return { message: 'Interest removed successfully!' };
 }
