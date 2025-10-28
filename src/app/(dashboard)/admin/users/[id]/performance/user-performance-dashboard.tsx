@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Profile, Task, Lead, CallLog, Appointment, PropertyInterest, Property, JobReport } from '@/lib/types';
-import { ListTodo, Users, Phone, Calendar, Star, Heart, Building2, DollarSign } from 'lucide-react';
+import { ListTodo, Users, Phone, Calendar, Star, Heart, Building2, DollarSign, MessageSquare } from 'lucide-react';
 import { Pie, PieChart, Cell, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import {
   ChartContainer,
@@ -154,21 +154,26 @@ const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments,
   };
   
   const salary = useMemo(() => {
-    const completedCallTasks = tasks.filter(t => t.status === 'Done' && t.task_type === 'Call');
-    const completedMeetingTasks = tasks.filter(t => t.status === 'Done' && t.task_type === 'Meeting');
+    const completedTasks = tasks.filter(t => t.status === 'Done');
+    const completedCallTasks = completedTasks.filter(t => t.task_type === 'Call');
+    const completedMeetingTasks = completedTasks.filter(t => t.task_type === 'Meeting');
+    const completedFollowUpTasks = completedTasks.filter(t => t.task_type === 'Follow-up');
     const approvedJobReports = jobReports.filter(r => r.status === 'approved');
 
     const callPay = completedCallTasks.length * (salaryParameters.per_call_rate || 0);
     const meetingPay = completedMeetingTasks.length * (salaryParameters.per_meeting_rate || 0);
+    const followUpPay = completedFollowUpTasks.length * (salaryParameters.per_follow_up_rate || 0);
     const travelPay = approvedJobReports.reduce((total, report) => total + (report.travel_distance_km || 0), 0) * (salaryParameters.per_km_travel_rate || 0);
     
     return {
-        total: callPay + meetingPay + travelPay,
+        total: callPay + meetingPay + followUpPay + travelPay,
         callPay,
         meetingPay,
+        followUpPay,
         travelPay,
         completedCallsCount: completedCallTasks.length,
         completedMeetingsCount: completedMeetingTasks.length,
+        completedFollowUpsCount: completedFollowUpTasks.length,
         approvedTravelKm: approvedJobReports.reduce((total, report) => total + (report.travel_distance_km || 0), 0)
     };
   }, [tasks, jobReports, salaryParameters]);
@@ -274,6 +279,7 @@ const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments,
                 <div className="space-y-2 mt-4 text-sm text-muted-foreground">
                     <div className="flex justify-between"><span>Calls ({salary.completedCallsCount}):</span> <span>{formatCurrency(salary.callPay)}</span></div>
                     <div className="flex justify-between"><span>Meetings ({salary.completedMeetingsCount}):</span> <span>{formatCurrency(salary.meetingPay)}</span></div>
+                    <div className="flex justify-between"><span>Follow-ups ({salary.completedFollowUpsCount}):</span> <span>{formatCurrency(salary.followUpPay)}</span></div>
                     <div className="flex justify-between"><span>Travel ({salary.approvedTravelKm} km):</span> <span>{formatCurrency(salary.travelPay)}</span></div>
                 </div>
             </CardContent>

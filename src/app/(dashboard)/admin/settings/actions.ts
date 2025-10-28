@@ -9,6 +9,7 @@ const settingsSchema = z.object({
   per_call_rate: z.number().min(0),
   per_meeting_rate: z.number().min(0),
   per_km_travel_rate: z.number().min(0),
+  per_follow_up_rate: z.number().min(0),
 });
 
 type SalaryParameters = z.infer<typeof settingsSchema>;

@@ -24,6 +24,7 @@ const settingsSchema = z.object({
   per_call_rate: z.coerce.number().min(0, 'Rate must be non-negative'),
   per_meeting_rate: z.coerce.number().min(0, 'Rate must be non-negative'),
   per_km_travel_rate: z.coerce.number().min(0, 'Rate must be non-negative'),
+  per_follow_up_rate: z.coerce.number().min(0, 'Rate must be non-negative'),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -42,6 +43,7 @@ export function SalarySettingsForm({ currentSettings }: SalarySettingsFormProps)
       per_call_rate: currentSettings['per_call_rate'] || 0,
       per_meeting_rate: currentSettings['per_meeting_rate'] || 0,
       per_km_travel_rate: currentSettings['per_km_travel_rate'] || 0,
+      per_follow_up_rate: currentSettings['per_follow_up_rate'] || 0,
     },
   });
 
@@ -76,7 +78,7 @@ export function SalarySettingsForm({ currentSettings }: SalarySettingsFormProps)
                 <Input type="number" step="0.01" {...field} />
               </FormControl>
               <FormDescription>
-                Amount (INR) paid for each completed call logged in the system.
+                Amount (INR) paid for each completed 'Call' task.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -92,7 +94,23 @@ export function SalarySettingsForm({ currentSettings }: SalarySettingsFormProps)
                 <Input type="number" step="0.01" {...field} />
               </FormControl>
               <FormDescription>
-                Amount (INR) paid for each completed appointment/meeting.
+                Amount (INR) paid for each completed 'Meeting' task.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="per_follow_up_rate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Rate per Follow-up</FormLabel>
+              <FormControl>
+                <Input type="number" step="0.01" {...field} />
+              </FormControl>
+              <FormDescription>
+                Amount (INR) paid for each completed 'Follow-up' task.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -108,7 +126,7 @@ export function SalarySettingsForm({ currentSettings }: SalarySettingsFormProps)
                 <Input type="number" step="0.01" {...field} />
               </FormControl>
               <FormDescription>
-                Amount (INR) paid for each kilometer reported in site visits or job reports.
+                Amount (INR) paid for each kilometer reported in approved site visit reports.
               </FormDescription>
               <FormMessage />
             </FormItem>
