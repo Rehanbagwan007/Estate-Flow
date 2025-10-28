@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -120,9 +121,6 @@ export function Header({ user, profile }: HeaderProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>Settings</DropdownMenuItem>
-          <DropdownMenuItem>Support</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <form action={logout}>
