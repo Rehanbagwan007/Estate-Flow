@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { 
-    DollarSign, 
     Bed, 
     Bath, 
     Square, 
@@ -194,8 +193,7 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                             <h3 className="font-semibold text-lg border-b pb-2">Property Details</h3>
                             <div className="flex items-center justify-between text-2xl mt-4">
                                 <span className="text-muted-foreground">Price</span>
-                                <span className="font-bold flex items-center gap-2">
-                                    <DollarSign className="text-green-600 h-6 w-6" />
+                                <span className="font-bold">
                                     {formatCurrency(property.price)}
                                 </span>
                             </div>
