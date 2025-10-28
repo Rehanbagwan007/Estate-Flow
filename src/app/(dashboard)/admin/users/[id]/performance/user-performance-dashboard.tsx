@@ -3,8 +3,8 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { Profile, Task, Lead, CallLog, Appointment } from '@/lib/types';
-import { ListTodo, Users, Phone, Calendar, Star } from 'lucide-react';
+import type { Profile, Task, Lead, CallLog, Appointment, PropertyInterest, Property } from '@/lib/types';
+import { ListTodo, Users, Phone, Calendar, Star, Heart, Building2 } from 'lucide-react';
 import { Pie, PieChart, Cell, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import {
   ChartContainer,
@@ -13,13 +13,27 @@ import {
 } from '@/components/ui/chart';
 import { useMemo } from 'react';
 import { format } from 'date-fns';
+import Link from 'next/link';
+
+interface EnrichedInterest extends PropertyInterest {
+    properties: Pick<Property, 'id' | 'title'> | null;
+    agent_assignments: {
+        profiles: Pick<Profile, 'id' | 'first_name' | 'last_name'> | null;
+    }[]
+}
+
+interface EnrichedAppointment extends Appointment {
+    agent: Pick<Profile, 'id' | 'first_name' | 'last_name'> | null;
+    property: { title: string | null } | null
+}
 
 interface PerformanceData {
     profile: Profile;
     tasks: Task[];
     leads: Lead[];
     calls: CallLog[];
-    appointments: Appointment[];
+    appointments: EnrichedAppointment[];
+    interests: EnrichedInterest[];
 }
 
 interface UserPerformanceDashboardProps {
@@ -36,10 +50,99 @@ const taskChartConfig = {
   count: { label: 'Tasks', color: 'hsl(var(--chart-1))' },
 };
 
+const CustomerActivityDashboard = ({ profile, interests, appointments }: { profile: Profile, interests: EnrichedInterest[], appointments: EnrichedAppointment[] }) => {
+    return (
+        <div className="space-y-6">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Customer Activity: {profile.first_name} {profile.last_name}</h1>
+                <p className="text-muted-foreground">
+                Overview of the customer's interests and appointments.
+                </p>
+            </div>
 
-export function UserPerformanceDashboard({ data }: UserPerformanceDashboardProps) {
-  const { profile, tasks, leads, calls, appointments } = data;
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Interests</CardTitle>
+                        <Heart className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{interests.length}</div>
+                        <p className="text-xs text-muted-foreground">properties expressed interest in</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{appointments.length}</div>
+                        <p className="text-xs text-muted-foreground">meetings scheduled</p>
+                    </CardContent>
+                </Card>
+            </div>
+            
+            <div className="grid gap-6 lg:grid-cols-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Property Interests</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                        {interests.length === 0 ? <p className="text-sm text-muted-foreground">No property interests found.</p> : interests.map(interest => {
+                            const agent = interest.agent_assignments[0]?.profiles;
+                            return (
+                                <div key={interest.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                    <div>
+                                        <Link href={`/properties/${interest.properties?.id}`} className="font-medium hover:underline">
+                                            {interest.properties?.title || 'Unknown Property'}
+                                        </Link>
+                                        <p className="text-xs text-muted-foreground">
+                                            Assigned to: {agent ? 
+                                                <Link href={`/admin/users/${agent.id}/performance`} className="text-primary hover:underline">{agent.first_name} {agent.last_name}</Link>
+                                                : 'Unassigned'}
+                                        </p>
+                                    </div>
+                                    <Badge variant={interest.status === 'pending' ? 'destructive' : 'secondary'}>{interest.status}</Badge>
+                                </div>
+                            )
+                        })}
+                        </div>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Appointments</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                         <div className="space-y-4">
+                         {appointments.length === 0 ? <p className="text-sm text-muted-foreground">No appointments found.</p> : appointments.map(appointment => (
+                            <div key={appointment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                <div>
+                                    <p className="font-medium">{appointment.property?.title || 'Appointment'}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {format(new Date(appointment.scheduled_at), 'PPP p')}
+                                    </p>
+                                     <p className="text-xs text-muted-foreground">
+                                        With: {appointment.agent ? 
+                                            <Link href={`/admin/users/${appointment.agent.id}/performance`} className="text-primary hover:underline">{appointment.agent.first_name} {appointment.agent.last_name}</Link>
+                                            : 'N/A'}
+                                    </p>
+                                </div>
+                                <Badge variant={appointment.status === 'scheduled' ? 'default' : 'outline'}>{appointment.status}</Badge>
+                            </div>
+                         ))}
+                         </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    )
+};
 
+
+const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments }: { profile: Profile, tasks: Task[], leads: Lead[], calls: CallLog[], appointments: Appointment[] }) => {
   const kpis = {
     tasksCompleted: tasks.filter(t => t.status === 'Done').length,
     activeLeads: leads.filter(l => ['Hot', 'Warm'].includes(l.status)).length,
@@ -70,7 +173,6 @@ export function UserPerformanceDashboard({ data }: UserPerformanceDashboardProps
         return acc;
     }, {} as Record<string, number>);
 
-    // Ensure we have data for the last 6 months even if count is 0
     const last6Months = Array.from({length: 6}, (_, i) => {
         const d = new Date();
         d.setMonth(d.getMonth() - i);
@@ -84,7 +186,6 @@ export function UserPerformanceDashboard({ data }: UserPerformanceDashboardProps
 
   }, [tasks]);
 
-
   return (
     <div className="space-y-6">
       <div>
@@ -94,7 +195,6 @@ export function UserPerformanceDashboard({ data }: UserPerformanceDashboardProps
         </p>
       </div>
       
-      {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -138,7 +238,6 @@ export function UserPerformanceDashboard({ data }: UserPerformanceDashboardProps
         </Card>
       </div>
 
-      {/* Charts */}
        <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -177,7 +276,6 @@ export function UserPerformanceDashboard({ data }: UserPerformanceDashboardProps
           </Card>
        </div>
 
-      {/* Recent Activity */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -219,5 +317,16 @@ export function UserPerformanceDashboard({ data }: UserPerformanceDashboardProps
         </Card>
       </div>
     </div>
-  );
+  )
+};
+
+
+export function UserPerformanceDashboard({ data }: UserPerformanceDashboardProps) {
+  const { profile, tasks, leads, calls, appointments, interests } = data;
+
+  if (profile.role === 'customer') {
+      return <CustomerActivityDashboard profile={profile} interests={interests} appointments={appointments} />;
+  }
+
+  return <AgentPerformanceDashboard profile={profile} tasks={tasks} leads={leads} calls={calls} appointments={appointments} />;
 }

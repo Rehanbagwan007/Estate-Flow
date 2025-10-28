@@ -1,17 +1,31 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { redirect, notFound } from 'next/navigation';
-import type { Profile, Task, Lead, CallLog, Appointment } from '@/lib/types';
+import type { Profile, Task, Lead, CallLog, Appointment, PropertyInterest, Property } from '@/lib/types';
 import { UserPerformanceDashboard } from './user-performance-dashboard';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import Link from 'next/link';
+
+interface EnrichedInterest extends PropertyInterest {
+    properties: Pick<Property, 'id' | 'title'> | null;
+    agent_assignments: {
+        profiles: Pick<Profile, 'id' | 'first_name' | 'last_name'> | null;
+    }[]
+}
+
+interface EnrichedAppointment extends Appointment {
+    agent: Pick<Profile, 'id' | 'first_name' | 'last_name'> | null;
+    property: { title: string | null } | null
+}
+
 
 type PerformanceData = {
     profile: Profile;
     tasks: Task[];
     leads: Lead[];
     calls: CallLog[];
-    appointments: Appointment[];
+    appointments: EnrichedAppointment[];
+    interests: EnrichedInterest[];
 }
 
 async function getUserPerformanceData(userId: string): Promise<PerformanceData | null> {
@@ -23,11 +37,44 @@ async function getUserPerformanceData(userId: string): Promise<PerformanceData |
         return null;
     }
 
+    if (profile.role === 'customer') {
+        const [interestsRes, appointmentsRes] = await Promise.all([
+             supabase
+                .from('property_interests')
+                .select(`
+                    *,
+                    properties (id, title),
+                    agent_assignments ( profiles (id, first_name, last_name) )
+                `)
+                .eq('customer_id', userId)
+                .order('created_at', { ascending: false }),
+             supabase
+                .from('appointments')
+                .select(`
+                    *, 
+                    agent:agent_id(id, first_name, last_name),
+                    property:property_interest_id(properties(title))
+                `)
+                .eq('customer_id', userId)
+                .order('scheduled_at', { ascending: false })
+        ]);
+
+        return {
+            profile,
+            tasks: [],
+            leads: [],
+            calls: [],
+            interests: (interestsRes.data as any) || [],
+            appointments: (appointmentsRes.data as any) || []
+        };
+    }
+
+    // Default data fetching for non-customer roles
     const [tasksRes, leadsRes, callsRes, appointmentsRes] = await Promise.all([
         supabase.from('tasks').select('*, property:related_property_id(title)').eq('assigned_to', userId).order('created_at', { ascending: false }),
         supabase.from('leads').select('*').eq('assigned_to', userId).order('created_at', { ascending: false }),
         supabase.from('call_logs').select('*').eq('agent_id', userId).order('created_at', { ascending: false }),
-        supabase.from('appointments').select('*').eq('agent_id', userId).order('created_at', { ascending: false })
+        supabase.from('appointments').select('*, agent:agent_id(id, first_name, last_name), property:property_interest_id(properties(title))').eq('agent_id', userId).order('created_at', { ascending: false })
     ]);
 
     return {
@@ -35,7 +82,8 @@ async function getUserPerformanceData(userId: string): Promise<PerformanceData |
         tasks: tasksRes.data || [],
         leads: leadsRes.data || [],
         calls: callsRes.data || [],
-        appointments: appointmentsRes.data || [],
+        appointments: (appointmentsRes.data as any) || [],
+        interests: []
     };
 }
 
@@ -83,4 +131,3 @@ export default async function UserPerformancePage({ params }: { params: { id: st
         </div>
     );
 }
-
