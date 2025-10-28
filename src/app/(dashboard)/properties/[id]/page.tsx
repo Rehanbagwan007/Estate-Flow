@@ -40,15 +40,8 @@ import {
   } from "@/components/ui/alert-dialog"
 import { deleteProperty } from "../actions";
 import { formatCurrency } from "@/lib/utils";
-import { PropertyInterestForm } from "@/components/properties/property-interest-form";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { PropertyCustomerActions } from "./customer-actions";
+
 
 async function getPropertyData(id: string) {
     const supabase = createClient();
@@ -215,20 +208,10 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                         </div>
                         
                         {profile.role === 'customer' && property.status === 'Available' && (
-                             <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button className="w-full" size="lg">
-                                        <Heart className="mr-2" /> I'm Interested
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-md">
-                                    <PropertyInterestForm
-                                        propertyId={property.id}
-                                        propertyTitle={property.title || 'this property'}
-                                        onSuccess={() => redirect(`/my-interests`)}
-                                    />
-                                </DialogContent>
-                            </Dialog>
+                             <PropertyCustomerActions
+                                propertyId={property.id}
+                                propertyTitle={property.title || 'this property'}
+                             />
                         )}
                     </div>
                    </div>
