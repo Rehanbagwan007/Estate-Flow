@@ -82,7 +82,7 @@ async function getUserPerformanceData(userId: string): Promise<PerformanceData |
         supabase.from('leads').select('*').eq('assigned_to', userId).order('created_at', { ascending: false }),
         supabase.from('call_logs').select('*').eq('agent_id', userId).order('created_at', { ascending: false }),
         supabase.from('appointments').select('*, agent:agent_id(id, first_name, last_name), property:property_interest_id(properties(title))').eq('agent_id', userId).order('created_at', { ascending: false }),
-        supabase.from('job_reports').select('*').eq('user_id', userId)
+        supabase.from('job_reports').select('*').eq('user_id', userId).order('report_date', { ascending: false })
     ]);
 
     return {
