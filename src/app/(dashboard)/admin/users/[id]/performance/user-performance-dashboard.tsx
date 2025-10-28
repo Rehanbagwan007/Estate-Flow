@@ -3,18 +3,23 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { Profile, Task, Lead, CallLog, Appointment, PropertyInterest, Property, JobReport } from '@/lib/types';
-import { ListTodo, Users, Phone, Calendar, Star, Heart, Building2, DollarSign, MessageSquare } from 'lucide-react';
+import type { Profile, Task, Lead, CallLog, Appointment, PropertyInterest, Property, JobReport, JobReportMedia } from '@/lib/types';
+import { ListTodo, Users, Phone, Calendar, Star, Heart, Building2, DollarSign, MessageSquare, FileText, Camera, CheckCircle2, XCircle } from 'lucide-react';
 import { Pie, PieChart, Cell, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { useMemo } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { updateJobReportStatus } from './actions';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 interface EnrichedInterest extends PropertyInterest {
     properties: Pick<Property, 'id' | 'title'> | null;
@@ -28,6 +33,10 @@ interface EnrichedAppointment extends Appointment {
     property: { title: string | null } | null
 }
 
+interface EnrichedJobReport extends JobReport {
+    job_report_media: JobReportMedia[];
+}
+
 interface PerformanceData {
     profile: Profile;
     tasks: Task[];
@@ -35,7 +44,7 @@ interface PerformanceData {
     calls: CallLog[];
     appointments: EnrichedAppointment[];
     interests: EnrichedInterest[];
-    jobReports: JobReport[];
+    jobReports: EnrichedJobReport[];
     salaryParameters: { [key: string]: number };
 }
 
@@ -145,7 +154,13 @@ const CustomerActivityDashboard = ({ profile, interests, appointments }: { profi
 };
 
 
-const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments, jobReports, salaryParameters }: PerformanceData) => {
+const AgentPerformanceDashboard = ({ data }: { data: PerformanceData }) => {
+  const [performanceData, setPerformanceData] = useState(data);
+  const [isUpdating, startTransition] = useTransition();
+  const { toast } = useToast();
+
+  const { profile, tasks, leads, calls, appointments, jobReports, salaryParameters } = performanceData;
+
   const kpis = {
     tasksCompleted: tasks.filter(t => t.status === 'Done').length,
     activeLeads: leads.filter(l => ['Hot', 'Warm'].includes(l.status)).length,
@@ -214,6 +229,43 @@ const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments,
 
   }, [tasks]);
 
+  const handleReportStatusUpdate = (reportId: string, status: 'approved' | 'rejected') => {
+    startTransition(async () => {
+        const result = await updateJobReportStatus(reportId, status);
+        if (result.success) {
+            toast({
+                title: 'Success!',
+                description: `Report has been ${status}.`
+            });
+            // Update local state to reflect the change
+            setPerformanceData(prevData => ({
+                ...prevData,
+                jobReports: prevData.jobReports.map(report => 
+                    report.id === reportId ? { ...report, status } : report
+                )
+            }));
+        } else {
+            toast({
+                title: 'Error',
+                description: result.error,
+                variant: 'destructive'
+            });
+        }
+    });
+  };
+  
+    const getStatusBadge = (status: 'submitted' | 'approved' | 'rejected') => {
+        switch (status) {
+            case 'approved':
+                return <Badge variant="secondary" className="bg-green-100 text-green-800">Approved</Badge>;
+            case 'rejected':
+                return <Badge variant="destructive">Rejected</Badge>;
+            case 'submitted':
+            default:
+                return <Badge variant="outline">Submitted</Badge>;
+        }
+    };
+
   return (
     <div className="space-y-6">
       <div>
@@ -280,7 +332,7 @@ const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments,
                     <div className="flex justify-between"><span>Calls ({salary.completedCallsCount}):</span> <span>{formatCurrency(salary.callPay)}</span></div>
                     <div className="flex justify-between"><span>Meetings ({salary.completedMeetingsCount}):</span> <span>{formatCurrency(salary.meetingPay)}</span></div>
                     <div className="flex justify-between"><span>Follow-ups ({salary.completedFollowUpsCount}):</span> <span>{formatCurrency(salary.followUpPay)}</span></div>
-                    <div className="flex justify-between"><span>Travel ({salary.approvedTravelKm} km):</span> <span>{formatCurrency(salary.travelPay)}</span></div>
+                    <div className="flex justify-between"><span>Travel ({salary.approvedTravelKm.toFixed(1)} km):</span> <span>{formatCurrency(salary.travelPay)}</span></div>
                 </div>
             </CardContent>
           </Card>
@@ -320,6 +372,56 @@ const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments,
               </CardContent>
           </Card>
        </div>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Job Reports</CardTitle>
+                <CardDescription>Review submitted daily work and travel reports.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {jobReports.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-4">No job reports submitted.</p>
+                ) : (
+                    jobReports.map(report => (
+                        <div key={report.id} className="p-4 border rounded-lg">
+                            <div className="flex items-start justify-between">
+                                <h4 className="font-semibold">Report for {format(new Date(report.report_date), 'PPP')}</h4>
+                                {getStatusBadge(report.status)}
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{report.details}</p>
+                            
+                            {report.travel_distance_km && (
+                                <p className="text-sm mt-2"><span className="font-medium">Travel:</span> {report.travel_distance_km} km</p>
+                            )}
+
+                            {report.job_report_media.length > 0 && (
+                                <div className="mt-4">
+                                    <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1"><Camera className="h-3 w-3" /> Uploaded Photos</p>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {report.job_report_media.map(media => (
+                                            <a key={media.id} href={media.file_path} target="_blank" rel="noopener noreferrer">
+                                                <Image src={media.file_path} alt="Report attachment" width={80} height={80} className="rounded-md object-cover aspect-square" />
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {report.status === 'submitted' && (
+                                <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                                    <Button variant="outline" size="sm" onClick={() => handleReportStatusUpdate(report.id, 'rejected')} disabled={isUpdating}>
+                                        {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4 mr-2" />} Reject
+                                    </Button>
+                                    <Button size="sm" onClick={() => handleReportStatusUpdate(report.id, 'approved')} disabled={isUpdating}>
+                                        {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />} Approve
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    ))
+                )}
+            </CardContent>
+        </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
@@ -373,5 +475,5 @@ export function UserPerformanceDashboard({ data }: UserPerformanceDashboardProps
       return <CustomerActivityDashboard profile={profile} interests={interests} appointments={appointments} />;
   }
 
-  return <AgentPerformanceDashboard {...data} />;
+  return <AgentPerformanceDashboard data={data} />;
 }

@@ -1,7 +1,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { redirect, notFound } from 'next/navigation';
-import type { Profile, Task, Lead, CallLog, Appointment, PropertyInterest, Property, JobReport } from '@/lib/types';
+import type { Profile, Task, Lead, CallLog, Appointment, PropertyInterest, Property, JobReport, JobReportMedia } from '@/lib/types';
 import { UserPerformanceDashboard } from './user-performance-dashboard';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import Link from 'next/link';
@@ -19,6 +19,10 @@ interface EnrichedAppointment extends Appointment {
     property: { title: string | null } | null
 }
 
+interface EnrichedJobReport extends JobReport {
+    job_report_media: JobReportMedia[];
+}
+
 
 type PerformanceData = {
     profile: Profile;
@@ -27,7 +31,7 @@ type PerformanceData = {
     calls: CallLog[];
     appointments: EnrichedAppointment[];
     interests: EnrichedInterest[];
-    jobReports: JobReport[];
+    jobReports: EnrichedJobReport[];
     salaryParameters: { [key: string]: number };
 }
 
@@ -82,7 +86,7 @@ async function getUserPerformanceData(userId: string): Promise<PerformanceData |
         supabase.from('leads').select('*').eq('assigned_to', userId).order('created_at', { ascending: false }),
         supabase.from('call_logs').select('*').eq('agent_id', userId).order('created_at', { ascending: false }),
         supabase.from('appointments').select('*, agent:agent_id(id, first_name, last_name), property:property_interest_id(properties(title))').eq('agent_id', userId).order('created_at', { ascending: false }),
-        supabase.from('job_reports').select('*').eq('user_id', userId).order('report_date', { ascending: false })
+        supabase.from('job_reports').select('*, job_report_media(*)').eq('user_id', userId).order('report_date', { ascending: false })
     ]);
 
     return {
@@ -92,7 +96,7 @@ async function getUserPerformanceData(userId: string): Promise<PerformanceData |
         calls: callsRes.data || [],
         appointments: (appointmentsRes.data as any) || [],
         interests: [],
-        jobReports: jobReportsRes.data || [],
+        jobReports: (jobReportsRes.data as EnrichedJobReport[]) || [],
         salaryParameters,
     };
 }
