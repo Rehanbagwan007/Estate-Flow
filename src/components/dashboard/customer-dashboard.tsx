@@ -280,5 +280,3 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
     </div>
   );
 }
-
-    
