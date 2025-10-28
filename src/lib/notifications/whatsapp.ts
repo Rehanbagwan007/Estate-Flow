@@ -1,5 +1,6 @@
 // WhatsApp notification service using Meta Business API
 // This is a placeholder implementation - in production, you would integrate with the actual Meta WhatsApp Business API
+import { formatCurrency } from '@/lib/utils';
 
 interface WhatsAppMessage {
   to: string;
@@ -97,15 +98,6 @@ export class WhatsAppService {
     });
   }
 
-  private formatCurrency(amount: number) {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  }
-
   async sendPropertyInterestNotification(
     phoneNumber: string,
     data: WhatsAppNotificationData['property_interest']
@@ -116,7 +108,7 @@ export class WhatsAppService {
 
 Hello! Thank you for your interest in *${data.property_title}*.
 
-💰 Price: ${this.formatCurrency(data.property_price)}
+💰 Price: ${formatCurrency(data.property_price)}
 👤 Your assigned agent: ${data.agent_name}
 📅 Meeting scheduled for: ${data.meeting_time}
 
