@@ -2,10 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'PT Sans', sans-serif;
-}
-
 @layer base {
   :root {
     --background: 200 67% 98%;
@@ -50,6 +46,8 @@ body {
     --sidebar-accent: 215 27.9% 93.9%;
     --sidebar-accent-foreground: 224 71.4% 4.1%;
     --sidebar-ring: 207 90% 54%;
+
+    --font-sans: "Inter", sans-serif;
   }
 
   .dark {
