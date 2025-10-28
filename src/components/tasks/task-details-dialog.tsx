@@ -26,7 +26,7 @@ interface TaskDetailsDialogProps {
     isOpen: boolean;
     onClose: () => void;
     onCall: (target: { customerId: string; customerPhone: string; customerName: string }) => void;
-    onUpdate: () => void;
+    onUpdate?: () => void;
 }
 
 export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: TaskDetailsDialogProps) {
@@ -72,7 +72,7 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
             const result = await updateTaskStatus(task.id, newStatus);
             if (result.success) {
                 toast({ title: 'Success', description: 'Task status updated.' });
-                onUpdate();
+                onUpdate?.();
                 onClose();
             } else {
                 toast({ title: 'Error', description: result.error, variant: 'destructive' });
@@ -82,7 +82,7 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
 
     const handleReportSuccess = () => {
         setIsReportDialogOpen(false);
-        onUpdate();
+        onUpdate?.();
         onClose();
         toast({ title: 'Success', description: 'Report submitted and task marked as complete.' });
     };
@@ -209,7 +209,7 @@ export function TaskDetailsDialog({ task, isOpen, onClose, onCall, onUpdate }: T
                             </Button>
                         </>
                     )}
-                     {task.task_type === 'Site Visit' && (
+                     {(task.task_type === 'Site Visit' || task.task_type === 'Meeting') && (
                         <Button
                             onClick={() => setIsReportDialogOpen(true)}
                             disabled={task.status === 'Done'}
