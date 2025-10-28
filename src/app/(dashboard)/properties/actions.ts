@@ -1,6 +1,5 @@
 
 
-
 'use server';
 
 import { z } from 'zod';
@@ -10,6 +9,7 @@ import { revalidatePath } from 'next/cache';
 import type { Property, PropertyShare } from '@/lib/types';
 import fetch from 'node-fetch';
 import { formatCurrency } from '@/lib/utils';
+import { redirect } from 'next/navigation';
 
 // --- Helper Functions & Interfaces ---
 
@@ -240,7 +240,7 @@ export async function saveProperty(
   const platformsToShare = formData.getAll('share_platforms') as string[];
 
   let savedProperty: Property | null = null;
-  let redirectUrl = '/(dashboard)/properties';
+  let isNewProperty = false;
 
   try {
     if (propertyId) {
@@ -252,8 +252,8 @@ export async function saveProperty(
         .single();
       if (error) throw error;
       savedProperty = data;
-      redirectUrl = `/(dashboard)/properties/${propertyId}`;
     } else {
+      isNewProperty = true;
       const { data, error } = await supabase
         .from('properties')
         .insert({
@@ -265,7 +265,6 @@ export async function saveProperty(
         .single();
       if (error) throw error;
       savedProperty = data;
-      redirectUrl = `/(dashboard)/properties/${savedProperty.id}`;
     }
 
     if (!savedProperty) {
@@ -296,7 +295,7 @@ export async function saveProperty(
       }
     }
 
-    if (!propertyId && savedProperty && platformsToShare.length > 0) {
+    if (isNewProperty && savedProperty && platformsToShare.length > 0) {
       console.log(`Property created. Sharing to: ${platformsToShare.join(', ')}`);
       
       const imageUrls = await getPropertyImageUrls(supabase, savedProperty.id);
@@ -334,7 +333,7 @@ export async function saveProperty(
                 console.error('Error saving share URLs to database:', error.message);
             } else {
                 console.log('Successfully saved share URLs.');
-                revalidatePath(`/(dashboard)/properties/${savedProperty!.id}`);
+                revalidatePath(`/properties/${savedProperty!.id}`);
             }
           }
       });
@@ -349,14 +348,13 @@ export async function saveProperty(
     return { message: `Database Error: ${message}` };
   }
 
-  revalidatePath('/(dashboard)/properties');
-  revalidatePath(redirectUrl);
-  
-  return {
-    success: true,
-    message: propertyId ? 'Property updated successfully!' : 'Property created and sharing has started!',
-    redirectUrl: redirectUrl,
-  };
+  if (isNewProperty) {
+    revalidatePath('/properties');
+    redirect('/properties');
+  } else {
+    revalidatePath(`/properties/${savedProperty.id}`);
+    redirect(`/properties/${savedProperty.id}`);
+  }
 }
 
 export async function deleteProperty(propertyId: string, propertyCreatorId: string) {
@@ -477,7 +475,7 @@ export async function deleteSocialPost(shareId: string): Promise<{success: boole
         if (dbError) {
             return { success: false, error: `Post was deleted from ${share.platform}, but failed to update CRM record: ${dbError.message}` };
         }
-        revalidatePath(`/(dashboard)/properties/${share.property_id}`);
+        revalidatePath(`/properties/${share.property_id}`);
         return { success: true };
     } else {
         return { success: false, error: `Failed to delete from ${share.platform}: ${result.error}` };

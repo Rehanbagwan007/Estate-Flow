@@ -132,10 +132,7 @@ export function PropertyForm({ property }: PropertyFormProps) {
           title: 'Success!',
           description: result.message,
         });
-        if (result.redirectUrl) {
-          router.push(result.redirectUrl);
-          router.refresh();
-        }
+        // The action now handles the redirect, so we don't need to do it here.
       }
     });
   };
