@@ -1,9 +1,11 @@
+
 import { createClient } from '@/lib/supabase/server';
 import { whatsappService } from './whatsapp';
+import type { Profile } from '../types';
 
 interface NotificationData {
   user_id: string;
-  type: 'property_interest' | 'appointment_reminder' | 'call_reminder' | 'approval_status' | 'task_assigned' | 'meeting_scheduled';
+  type: 'property_interest' | 'appointment_reminder' | 'call_reminder' | 'approval_status' | 'task_assigned' | 'meeting_scheduled' | 'report_submitted' | 'task_completed';
   title: string;
   message: string;
   data?: Record<string, any>;
@@ -30,6 +32,30 @@ export class NotificationService {
       this.supabase = createClient();
     }
     return this.supabase;
+  }
+  
+  async getManagerToNotify(submittingUserRole: Profile['role']): Promise<string | null> {
+    const supabase = await this.getSupabase();
+    let managerRole: Profile['role'] | null = null;
+  
+    if (submittingUserRole === 'admin') {
+      managerRole = 'super_admin';
+    } else if (submittingUserRole !== 'super_admin') {
+      managerRole = 'admin';
+    }
+  
+    if (managerRole) {
+      const { data: manager } = await supabase.from('profiles').select('id').eq('role', managerRole).limit(1).single();
+      return manager?.id || null;
+    }
+    
+    // If no admin is found, fallback to super_admin for non-admin roles
+    if (submittingUserRole !== 'super_admin') {
+       const { data: superAdmin } = await supabase.from('profiles').select('id').eq('role', 'super_admin').limit(1).single();
+       return superAdmin?.id || null;
+    }
+
+    return null;
   }
 
   async createNotification(notification: NotificationData): Promise<boolean> {
@@ -283,8 +309,7 @@ export class NotificationService {
       
       const { data: notifications, error } = await supabase
         .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
+        .select('*, user:profiles!notifications_user_id_fkey(*)')
         .order('created_at', { ascending: false })
         .limit(limit);
 

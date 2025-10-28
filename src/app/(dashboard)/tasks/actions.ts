@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import type { Task, TaskStatus } from '@/lib/types';
 import { taskSchema, reportSchema } from '@/schemas';
 import { whatsappService } from '@/lib/notifications/whatsapp';
+import { notificationService } from '@/lib/notifications/notification-service';
 
 export async function createTask(
   prevState: { message: string; success?: boolean },
@@ -114,10 +115,9 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
         return { error: 'Authentication required.' };
     }
 
-    // Optional: Add a check to ensure the user is authorized to update this task
     const { data: task, error: fetchError } = await supabase
         .from('tasks')
-        .select('assigned_to, created_by')
+        .select('*, assigned_to_profile:assigned_to(*)')
         .eq('id', taskId)
         .single();
     
@@ -126,7 +126,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
     }
 
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-
+    
     const canUpdate = 
         task.assigned_to === user.id || 
         task.created_by === user.id ||
@@ -144,6 +144,21 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
     if (updateError) {
         console.error('Error updating task status:', updateError);
         return { error: `Failed to update task status. ${updateError.message}` };
+    }
+
+    // Send notification if task is completed
+    if (status === 'Done') {
+        const managerId = await notificationService.getManagerToNotify(task.assigned_to_profile.role);
+        if (managerId) {
+            const userName = `${task.assigned_to_profile.first_name || 'A'} ${task.assigned_to_profile.last_name || 'user'}`;
+            notificationService.createNotification({
+                user_id: managerId,
+                type: 'task_completed',
+                title: 'Task Completed',
+                message: `${userName} has completed the task: "${task.title}"`,
+                data: { taskId: task.id, userId: task.assigned_to }
+            });
+        }
     }
 
     revalidatePath('/(dashboard)/tasks');

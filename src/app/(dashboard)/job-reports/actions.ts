@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { UserRole } from '@/lib/types';
 import { z } from 'zod';
+import { notificationService } from '@/lib/notifications/notification-service';
 
 const reportSchema = z.object({
   details: z.string().min(10),
@@ -52,6 +53,7 @@ export async function submitJobReport(
   }
 
   let savedReportId: string;
+  let isNewReport = false;
 
   if (existingReport) {
     // Update existing report
@@ -81,17 +83,11 @@ export async function submitJobReport(
 
   } else {
     // Insert new report
-    let reportToId: string | null = null;
-    if (userRole === 'admin') {
-      const { data: superAdmin } = await supabase.from('profiles').select('id').eq('role', 'super_admin').limit(1).single();
-      if (superAdmin) reportToId = superAdmin.id;
-    } else if (userRole !== 'super_admin') {
-      const { data: admin } = await supabase.from('profiles').select('id').eq('role', 'admin').limit(1).single();
-      if (admin) reportToId = admin.id;
-    }
+    isNewReport = true;
+    let reportToId: string | null = await notificationService.getManagerToNotify(userRole);
 
     if (!reportToId && userRole !== 'super_admin') {
-      return { error: 'Could not find a user to report to. Please contact system administrator.' };
+      console.warn('Could not find a user to report to. Report will be unassigned.');
     }
 
     const reportPayload = {
@@ -147,6 +143,20 @@ export async function submitJobReport(
   // If the report was related to a task, mark the task as complete
   if (relatedTaskId) {
     await supabase.from('tasks').update({ status: 'Done', updated_at: new Date().toISOString() }).eq('id', relatedTaskId);
+  }
+
+  // Send notification to manager
+  const managerId = await notificationService.getManagerToNotify(userRole);
+  if (managerId) {
+      const { data: userProfile } = await supabase.from('profiles').select('first_name, last_name').eq('id', userId).single();
+      const userName = `${userProfile?.first_name || 'A'} ${userProfile?.last_name || 'user'}`;
+      notificationService.createNotification({
+          user_id: managerId,
+          type: 'report_submitted',
+          title: `New Report from ${userName}`,
+          message: `${userName} has ${isNewReport ? 'submitted their' : 'updated their'} daily report.`,
+          data: { reportId: savedReportId, userId: userId }
+      });
   }
 
   revalidatePath('/(dashboard)/job-reports');

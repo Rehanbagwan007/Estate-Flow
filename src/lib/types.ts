@@ -1,3 +1,4 @@
+
 import type { MergeDeep } from 'type-fest';
 import type { Database as Db, Tables, Enums } from './supabase-types';
 
@@ -71,7 +72,7 @@ export type AppointmentStatus = Enums<'appointment_status'>;
 export type CallStatus = Enums<'call_status'>;
 export type CallType = Enums<'call_type'>;
 export type VisitType = Enums<'visit_type'>;
-export type NotificationType = Enums<'notification_type'>;
+export type NotificationType = 'property_interest' | 'appointment_reminder' | 'call_reminder' | 'approval_status' | 'task_assigned' | 'meeting_scheduled' | 'report_submitted' | 'task_completed';
 export type NotificationChannel = Enums<'notification_channel'>;
 export type IntegrationType = Enums<'integration_type'>;
 export type AssignmentType = Enums<'assignment_type'>;
@@ -81,7 +82,3 @@ export type PropertyType = Enums<'property_type'>;
 export type TaskStatus = Enums<'task_status'>;
 export type JobReportStatus = Enums<'job_report_status'>;
 export type TaskType = 'Follow-up' | 'Call' | 'Site Visit' | 'Meeting';
-
-    
-
-    

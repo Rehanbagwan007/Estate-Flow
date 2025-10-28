@@ -14,18 +14,27 @@ import {
   DollarSign,
   Activity,
   BarChart3,
-  ListTodo
+  ListTodo,
+  FileText,
+  UserCheck
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { Profile, Property, Lead, CallLog, Appointment, PropertyInterest, Task } from '@/lib/types';
+import type { Profile, Property, Lead, CallLog, Appointment, PropertyInterest, Task, Notification } from '@/lib/types';
 import { TaskList } from '../tasks/task-list';
 import { TaskDetailsDialog } from '../tasks/task-details-dialog';
 import { ExotelCallInterface } from '../calls/exotel-call-interface';
+import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 
 interface EnrichedTask extends Task {
     property?: (Property & { property_media?: { file_path: string }[] }) | null;
     customer?: Profile | null;
 }
+
+interface EnrichedNotification extends Notification {
+    user: Profile | null;
+}
+
 
 interface SuperAdminDashboardProps {
   userId: string;
@@ -39,6 +48,7 @@ export function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [propertyInterests, setPropertyInterests] = useState<PropertyInterest[]>([]);
   const [tasks, setTasks] = useState<EnrichedTask[]>([]);
+  const [notifications, setNotifications] = useState<EnrichedNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [callTarget, setCallTarget] = useState<{ customerId: string; customerPhone: string; customerName: string } | null>(null);
@@ -54,7 +64,8 @@ export function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
       callLogsResult,
       appointmentsResult,
       propertyInterestsResult,
-      tasksResult
+      tasksResult,
+      notificationsResult
     ] = await Promise.all([
       supabase.from('profiles').select('*'),
       supabase.from('properties').select('*'),
@@ -62,7 +73,8 @@ export function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
       supabase.from('call_logs').select('*'),
       supabase.from('appointments').select('*'),
       supabase.from('property_interests').select('*'),
-      supabase.from('tasks').select('*, property:related_property_id(*, property_media(file_path)), customer:related_customer_id(*)').eq('assigned_to', userId)
+      supabase.from('tasks').select('*, property:related_property_id(*, property_media(file_path)), customer:related_customer_id(*)').eq('assigned_to', userId),
+      supabase.from('notifications').select('*, user:profiles!notifications_user_id_fkey(*)').order('created_at', { ascending: false }).limit(10),
     ]);
     
     setUsers(usersResult.data || []);
@@ -72,6 +84,7 @@ export function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
     setAppointments(appointmentsResult.data || []);
     setPropertyInterests(propertyInterestsResult.data || []);
     setTasks(tasksResult.data || []);
+    setNotifications((notificationsResult.data as EnrichedNotification[]) || []);
     setIsLoading(false);
   };
 
@@ -120,27 +133,15 @@ export function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
     return acc;
   }, {} as Record<string, number>);
 
-  // Recent activity
-  const recentActivities = [
-    ...leads.slice(0, 3).map(lead => ({
-      type: 'lead',
-      message: `New lead: ${lead.first_name} ${lead.last_name}`,
-      timestamp: lead.created_at,
-      status: lead.status
-    })),
-    ...propertyInterests.slice(0, 3).map(interest => ({
-      type: 'interest',
-      message: `Property interest expressed`,
-      timestamp: interest.created_at,
-      status: interest.status
-    })),
-    ...callLogs.slice(0, 3).map(call => ({
-      type: 'call',
-      message: `Call completed`,
-      timestamp: call.created_at,
-      status: call.call_status
-    }))
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 5);
+  const getIconForNotification = (type: Notification['type']) => {
+    switch(type) {
+      case 'report_submitted': return <FileText className="h-4 w-4 text-blue-500" />;
+      case 'task_completed': return <UserCheck className="h-4 w-4 text-green-500" />;
+      case 'property_interest': return <Building2 className="h-4 w-4 text-purple-500" />;
+      case 'task_assigned': return <ListTodo className="h-4 w-4 text-orange-500" />;
+      default: return <Activity className="h-4 w-4 text-gray-500" />;
+    }
+  }
   
   if (isLoading) {
     return <div>Loading dashboard...</div>;
@@ -304,28 +305,32 @@ export function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
+              <CardTitle>Recent System Activity</CardTitle>
               <CardDescription>
-                Latest system activities
+                Latest notifications from across the system.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {recentActivities.map((activity, index) => (
-                  <div key={index} className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium">{activity.message}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(activity.timestamp).toLocaleString()}
-                      </p>
+            {notifications.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No recent activities.</div>
+            ) : (
+                <div className="space-y-4">
+                {notifications.map((activity) => (
+                    <div key={activity.id} className="flex items-center space-x-4">
+                        <div className="w-8 h-8 flex items-center justify-center">
+                            {getIconForNotification(activity.type)}
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-medium leading-none">{activity.title}</p>
+                            <p className="text-sm text-muted-foreground">{activity.message}</p>
+                        </div>
+                        <time className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                        </time>
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      {activity.status}
-                    </Badge>
-                  </div>
                 ))}
-              </div>
+                </div>
+            )}
             </CardContent>
           </Card>
         </div>
@@ -340,30 +345,26 @@ export function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-              <Button variant="outline" className="h-auto p-4">
-                <div className="text-left">
-                  <div className="font-medium">User Management</div>
-                  <div className="text-sm text-muted-foreground">Approve users</div>
-                </div>
-              </Button>
-              <Button variant="outline" className="h-auto p-4">
-                <div className="text-left">
-                  <div className="font-medium">System Settings</div>
-                  <div className="text-sm text-muted-foreground">Configure integrations</div>
-                </div>
-              </Button>
-              <Button variant="outline" className="h-auto p-4">
-                <div className="text-left">
-                  <div className="font-medium">Analytics</div>
-                  <div className="text-sm text-muted-foreground">View detailed reports</div>
-                </div>
-              </Button>
-              <Button variant="outline" className="h-auto p-4">
-                <div className="text-left">
-                  <div className="font-medium">Call Recordings</div>
-                  <div className="text-sm text-muted-foreground">Monitor calls</div>
-                </div>
-              </Button>
+                <Button variant="outline" asChild>
+                    <Link href="/admin/users">
+                        <Users className="mr-2" /> User Management
+                    </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                    <Link href="/admin/settings">
+                        <DollarSign className="mr-2" /> Salary Settings
+                    </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                    <Link href="#">
+                         <BarChart3 className="mr-2" /> View Reports
+                    </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                    <Link href="#">
+                        <Phone className="mr-2" /> Call Recordings
+                    </Link>
+                </Button>
             </div>
           </CardContent>
         </Card>

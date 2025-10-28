@@ -12,15 +12,24 @@ import {
   Calendar,
   UserPlus,
   Building,
-  Clock
+  Clock,
+  Activity,
+  UserCheck,
+  FileText
 } from 'lucide-react';
-import type { Profile, Property, PropertyInterest, Appointment, Task } from '@/lib/types';
+import type { Profile, Property, PropertyInterest, Appointment, Task, Notification } from '@/lib/types';
 import { AssignAgentDialog } from './assign-agent-dialog';
 import { createClient } from '@/lib/supabase/client';
+import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 
 interface EnrichedInterest extends PropertyInterest {
   properties: Property | null;
   profiles: Profile | null;
+}
+
+interface EnrichedNotification extends Notification {
+    user: Profile | null;
 }
 
 interface AdminDashboardProps {
@@ -32,6 +41,7 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [propertyInterests, setPropertyInterests] = useState<EnrichedInterest[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [notifications, setNotifications] = useState<EnrichedNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [selectedInterest, setSelectedInterest] = useState<EnrichedInterest | null>(null);
@@ -45,24 +55,25 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
         propertiesResult,
         propertyInterestsResult,
         appointmentsResult,
+        notificationsResult,
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('approval_status', 'pending'),
         supabase.from('properties').select('*'),
         supabase.from('property_interests').select('*, properties:property_id(*), profiles:customer_id(*), agent:agent_assignments!property_interest_id(id)'),
         supabase.from('appointments').select('*, agent:profiles!appointments_agent_id_fkey(*), customer:profiles!appointments_customer_id_fkey(*)'),
+        supabase.from('notifications').select('*, user:profiles!notifications_user_id_fkey(*)').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
       ]);
-
-   
 
       setPendingUsers(pendingUsersResult.data || []);
       setProperties(propertiesResult.data || []);
       setPropertyInterests((propertyInterestsResult.data as EnrichedInterest[]) || []);
       setAppointments(appointmentsResult.data || []);
+      setNotifications((notificationsResult.data as EnrichedNotification[]) || []);
       setIsLoading(false);
     };
 
     fetchData();
-  }, []);
+  }, [userId]);
   
   const handleAssignmentSuccess = (interestId: string, assignedTask: Task) => {
     // Update the local state to remove the newly assigned interest from the pending list
@@ -71,6 +82,14 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
   };
   
   const pendingInterests = propertyInterests.filter(i => i.status === 'pending');
+
+  const getIconForNotification = (type: Notification['type']) => {
+    switch(type) {
+      case 'report_submitted': return <FileText className="h-4 w-4 text-blue-500" />;
+      case 'task_completed': return <UserCheck className="h-4 w-4 text-green-500" />;
+      default: return <Activity className="h-4 w-4 text-gray-500" />;
+    }
+  }
 
   if (isLoading) {
       return <div>Loading dashboard...</div>;
@@ -147,58 +166,89 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
             </Card>
         </div>
 
-        {/* Recent Property Interests (New Leads) */}
-        <Card>
-          <CardHeader>
-            <CardTitle>New Leads from Property Interests</CardTitle>
-            <CardDescription>
-              Latest customer interest expressions that need assignment.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {pendingInterests.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No new leads yet.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {pendingInterests.map((interest) => (
-                  <div key={interest.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <Building className="h-8 w-8 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{interest.properties?.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          by {interest.profiles?.first_name} {interest.profiles?.last_name}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="mt-1">
-                                {interest.interest_level}
-                            </Badge>
-                            {interest.preferred_meeting_time && (
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    Prefers: {new Date(interest.preferred_meeting_time).toLocaleString()}
-                                </span>
-                            )}
+        <div className="grid gap-6 lg:grid-cols-2">
+            {/* Recent Property Interests (New Leads) */}
+            <Card>
+            <CardHeader>
+                <CardTitle>New Leads from Property Interests</CardTitle>
+                <CardDescription>
+                Latest customer interest expressions that need assignment.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {pendingInterests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                    No new leads yet.
+                </div>
+                ) : (
+                <div className="space-y-4">
+                    {pendingInterests.map((interest) => (
+                    <div key={interest.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                        <Building className="h-8 w-8 text-muted-foreground" />
+                        <div>
+                            <p className="font-medium">{interest.properties?.title}</p>
+                            <p className="text-sm text-muted-foreground">
+                            by {interest.profiles?.first_name} {interest.profiles?.last_name}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="mt-1">
+                                    {interest.interest_level}
+                                </Badge>
+                                {interest.preferred_meeting_time && (
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        Prefers: {new Date(interest.preferred_meeting_time).toLocaleString()}
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                      </div>
+                        </div>
+                        <div className="flex space-x-2">
+                        <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setSelectedInterest(interest)}
+                        >
+                            Assign Lead
+                        </Button>
+                        </div>
                     </div>
-                    <div className="flex space-x-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => setSelectedInterest(interest)}
-                      >
-                        Assign Lead
-                      </Button>
+                    ))}
+                </div>
+                )}
+            </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Recent Team Activity</CardTitle>
+                    <CardDescription>Latest updates from your team members.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                {notifications.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No recent activities.</div>
+                ) : (
+                    <div className="space-y-4">
+                    {notifications.map((activity) => (
+                        <div key={activity.id} className="flex items-center space-x-4">
+                            <div className="w-8 h-8 flex items-center justify-center">
+                                {getIconForNotification(activity.type)}
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-medium leading-none">{activity.title}</p>
+                                <p className="text-sm text-muted-foreground">{activity.message}</p>
+                            </div>
+                            <time className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                            </time>
+                        </div>
+                    ))}
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+                </CardContent>
+            </Card>
+        </div>
       </div>
     </>
   );
