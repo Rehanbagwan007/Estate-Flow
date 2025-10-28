@@ -97,22 +97,8 @@ async function getUserPerformanceData(userId: string): Promise<PerformanceData |
     };
 }
 
-
-export default async function UserPerformancePage({ params }: { params: { id: string } }) {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-        return redirect('/login');
-    }
-
-    const { data: currentUserProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-
-    if (!currentUserProfile || !['super_admin', 'admin'].includes(currentUserProfile.role)) {
-        return redirect('/dashboard');
-    }
-
-    const performanceData = await getUserPerformanceData(params.id);
+async function PageContent({ userId }: { userId: string }) {
+    const performanceData = await getUserPerformanceData(userId);
 
     if (!performanceData) {
         return notFound();
@@ -140,4 +126,21 @@ export default async function UserPerformancePage({ params }: { params: { id: st
             <UserPerformanceDashboard data={performanceData} />
         </div>
     );
+}
+
+export default async function UserPerformancePage({ params }: { params: { id: string } }) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return redirect('/login');
+    }
+
+    const { data: currentUserProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+
+    if (!currentUserProfile || !['super_admin', 'admin'].includes(currentUserProfile.role)) {
+        return redirect('/dashboard');
+    }
+
+    return <PageContent userId={params.id} />;
 }
