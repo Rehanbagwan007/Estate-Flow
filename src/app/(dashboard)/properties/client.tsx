@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
-import { PropertiesTable } from '@/components/properties/properties-table';
+import {  PropertiesTable } from '@/components/properties/properties-table';
 import {
   Card,
   CardContent,

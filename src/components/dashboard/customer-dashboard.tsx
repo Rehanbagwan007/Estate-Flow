@@ -11,8 +11,7 @@ import {
   Building2, 
   Heart, 
   Calendar, 
-  MapPin,
-  DollarSign,
+  MapPin, 
   Search,
   Filter,
   Eye
@@ -281,3 +280,5 @@ export function CustomerDashboard({ userId }: CustomerDashboardProps) {
     </div>
   );
 }
+
+    
