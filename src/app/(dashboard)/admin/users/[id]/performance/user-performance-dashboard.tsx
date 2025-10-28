@@ -154,14 +154,22 @@ const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments,
   };
   
   const salary = useMemo(() => {
-    const callPay = (calls.filter(c => c.call_status === 'completed').length) * (salaryParameters.per_call_rate || 0);
-    const meetingPay = (appointments.filter(a => a.status === 'completed').length) * (salaryParameters.per_meeting_rate || 0);
-    const travelPay = jobReports.reduce((total, report) => total + (report.travel_distance_km || 0), 0) * (salaryParameters.per_km_travel_rate || 0);
+    const completedCalls = calls.filter(c => c.call_status === 'completed');
+    const completedMeetings = appointments.filter(a => a.status === 'completed');
+    const approvedJobReports = jobReports.filter(r => r.status === 'approved');
+
+    const callPay = completedCalls.length * (salaryParameters.per_call_rate || 0);
+    const meetingPay = completedMeetings.length * (salaryParameters.per_meeting_rate || 0);
+    const travelPay = approvedJobReports.reduce((total, report) => total + (report.travel_distance_km || 0), 0) * (salaryParameters.per_km_travel_rate || 0);
+    
     return {
         total: callPay + meetingPay + travelPay,
         callPay,
         meetingPay,
-        travelPay
+        travelPay,
+        completedCallsCount: completedCalls.length,
+        completedMeetingsCount: completedMeetings.length,
+        approvedTravelKm: approvedJobReports.reduce((total, report) => total + (report.travel_distance_km || 0), 0)
     };
   }, [calls, appointments, jobReports, salaryParameters]);
 
@@ -264,9 +272,9 @@ const AgentPerformanceDashboard = ({ profile, tasks, leads, calls, appointments,
             <CardContent>
                 <div className="text-4xl font-bold">{formatCurrency(salary.total)}</div>
                 <div className="space-y-2 mt-4 text-sm text-muted-foreground">
-                    <div className="flex justify-between"><span>Calls ({calls.filter(c => c.call_status === 'completed').length}):</span> <span>{formatCurrency(salary.callPay)}</span></div>
-                    <div className="flex justify-between"><span>Meetings ({appointments.filter(a => a.status === 'completed').length}):</span> <span>{formatCurrency(salary.meetingPay)}</span></div>
-                    <div className="flex justify-between"><span>Travel ({jobReports.reduce((total, report) => total + (report.travel_distance_km || 0), 0)} km):</span> <span>{formatCurrency(salary.travelPay)}</span></div>
+                    <div className="flex justify-between"><span>Calls ({salary.completedCallsCount}):</span> <span>{formatCurrency(salary.callPay)}</span></div>
+                    <div className="flex justify-between"><span>Meetings ({salary.completedMeetingsCount}):</span> <span>{formatCurrency(salary.meetingPay)}</span></div>
+                    <div className="flex justify-between"><span>Travel ({salary.approvedTravelKm} km):</span> <span>{formatCurrency(salary.travelPay)}</span></div>
                 </div>
             </CardContent>
           </Card>
@@ -361,3 +369,5 @@ export function UserPerformanceDashboard({ data }: UserPerformanceDashboardProps
 
   return <AgentPerformanceDashboard {...data} />;
 }
+
+    
