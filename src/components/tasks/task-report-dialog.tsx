@@ -5,8 +5,8 @@ import { useState, useTransition } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { submitTaskReport } from '@/app/(dashboard)/tasks/actions';
-import type { Task } from '@/lib/types';
+import { submitJobReport } from '@/app/(dashboard)/job-reports/actions';
+import type { Profile, Task } from '@/lib/types';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +22,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, UploadCloud, X } from 'lucide-react';
 import Image from 'next/image';
+import { createClient } from '@/lib/supabase/client';
+import { useEffect } from 'react';
 
 const reportSchema = z.object({
   details: z.string().min(10, 'Please provide more details about your work.'),
@@ -41,6 +43,23 @@ interface TaskReportDialogProps {
 export function TaskReportDialog({ task, isOpen, onClose, onSuccess }: TaskReportDialogProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [currentUser, setCurrentUser] = useState<{ id: string, role: Profile['role']} | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+            if (profile) {
+                setCurrentUser({ id: user.id, role: profile.role });
+            }
+        }
+    };
+    if (isOpen) {
+        fetchUser();
+    }
+  }, [isOpen]);
 
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -72,6 +91,10 @@ export function TaskReportDialog({ task, isOpen, onClose, onSuccess }: TaskRepor
   };
 
   function onSubmit(values: z.infer<typeof reportSchema>) {
+    if (!currentUser) {
+        toast({ title: 'Error', description: 'Could not identify current user.', variant: 'destructive' });
+        return;
+    }
     startTransition(async () => {
       const formData = new FormData();
       
@@ -85,7 +108,14 @@ export function TaskReportDialog({ task, isOpen, onClose, onSuccess }: TaskRepor
         formData.append('files', file);
       });
 
-      const result = await submitTaskReport(task!.id, formData);
+      const result = await submitJobReport(
+          currentUser.id,
+          currentUser.role,
+          formData,
+          task!.id,
+          task!.title
+      );
+
       if (result.error) {
         toast({
           title: 'Error',
@@ -162,7 +192,7 @@ export function TaskReportDialog({ task, isOpen, onClose, onSuccess }: TaskRepor
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {previews.map((preview, index) => (
                         <div key={index} className="relative aspect-square">
-                            <Image src={preview} alt={`Preview ${index}`} fill className="object-cover rounded-md" />
+                            <Image src={preview} alt={'Preview ${index}'} fill className="object-cover rounded-md" />
                             <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removeFile(index)}>
                                 <X className="h-4 w-4" />
                             </Button>
@@ -172,7 +202,7 @@ export function TaskReportDialog({ task, isOpen, onClose, onSuccess }: TaskRepor
                     )}
                  <DialogFooter>
                     <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>
+                    <Button type="submit" disabled={isPending || !currentUser}>
                         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Submit Report & Complete Task
                     </Button>
