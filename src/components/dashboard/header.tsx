@@ -9,15 +9,15 @@ import {
   ListTodo,
   Menu,
   Search,
+  Award,
+  Building,
+  Heart,
+  UserCheck,
+  Settings,
+  FileText,
+  PlusCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,10 +31,11 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Logo } from '@/components/icons/logo';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import type { User } from '@supabase/supabase-js';
-import type { Profile } from '@/lib/types';
+import type { Profile, UserRole } from '@/lib/types';
 import { logout } from '@/lib/actions';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { Badge } from '../ui/badge';
 
 interface HeaderProps {
   user: User | null;
@@ -45,10 +46,30 @@ export function Header({ user, profile }: HeaderProps) {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'Dashboard', icon: Home, roles: ['admin', 'agent'] },
-    { href: '/properties', label: 'Properties', icon: Building2, roles: ['admin', 'agent'] },
-    { href: '/leads', label: 'Leads', icon: Users, roles: ['admin', 'agent'] },
-    { href: '/tasks', label: 'Tasks', icon: ListTodo, roles: ['admin', 'agent'] },
+    // Common items
+    { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['super_admin', 'admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2', 'customer'] },
+    { href: '/job-reports', label: 'Job Reports', icon: FileText, roles: ['super_admin', 'admin', 'agent', 'caller_1', 'caller_2', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
+    
+    // Super Admin & Admin
+    { href: '/admin/users', label: 'User Management', icon: UserCheck, roles: ['super_admin', 'admin'] },
+    { href: '/admin/settings', label: 'Settings', icon: Settings, roles: ['super_admin', 'admin'] },
+    
+    // Properties (Admin, Agent)
+    { href: '/properties', label: 'Properties', icon: Building2, roles: ['super_admin', 'admin', 'agent'] },
+    { href: '/properties/new', label: 'Add Property', icon: Building, roles: ['super_admin', 'admin', 'agent'] },
+    
+    // Leads (Admin, Agent, Sales roles)
+    { href: '/leads', label: 'Leads', icon: Users, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2']},
+    
+    // Tasks (Admin, Agent, Sales roles)
+    { href: '/tasks', label: 'Tasks', icon: ListTodo, roles: ['super_admin', 'admin', 'agent', 'sales_manager', 'sales_executive_1', 'sales_executive_2'] },
+    { href: '/tasks/new', label: 'New Task', icon: PlusCircle, roles: ['super_admin', 'admin', 'sales_manager'] },
+        
+    // Sales Management
+    { href: '/sales/team', label: 'Sales Team', icon: Award, roles: ['super_admin', 'admin', 'sales_manager'] },
+    
+    // Customer specific
+    { href: '/my-interests', label: 'My Interests', icon: Heart, roles: ['customer'] },
   ];
 
   const getInitials = (firstName?: string, lastName?: string) => {
@@ -58,7 +79,8 @@ export function Header({ user, profile }: HeaderProps) {
   };
   
   const isActive = (href: string) => {
-    return href === '/' ? pathname === href : pathname.startsWith(href);
+    if (href === '/dashboard' || href === '/') return pathname === href;
+    return pathname.startsWith(href);
   };
 
   return (
@@ -79,7 +101,9 @@ export function Header({ user, profile }: HeaderProps) {
               <Logo className="h-6 w-6 text-primary" />
               <span>EstateFlow</span>
             </Link>
-            {navItems.map(({ href, label, icon: Icon }) => (
+            {profile && navItems
+              .filter(item => item.roles.includes(profile.role))
+              .map(({ href, label, icon: Icon, badge }) => (
               <Link
                 key={label}
                 href={href}
@@ -90,6 +114,11 @@ export function Header({ user, profile }: HeaderProps) {
               >
                 <Icon className="h-5 w-5" />
                 {label}
+                {badge !== undefined && badge > 0 && (
+                     <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+                       {badge}
+                     </Badge>
+                  )}
               </Link>
             ))}
           </nav>
