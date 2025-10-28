@@ -12,32 +12,12 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, MessageSquare, Trash2, Edit } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import Image from "next/image"
 import placeholderImages from '@/lib/placeholder-images.json';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { deleteProperty } from "@/app/(dashboard)/properties/actions"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { formatCurrency } from "@/lib/utils"
 
 interface PropertiesTableProps {
   properties: Property[]
@@ -46,15 +26,6 @@ interface PropertiesTableProps {
 export function PropertiesTable({ properties }: PropertiesTableProps) {
   const { toast } = useToast();
   const router = useRouter();
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
   
   const getStatusVariant = (status: Property['status']) => {
     switch (status) {
@@ -70,22 +41,6 @@ export function PropertiesTable({ properties }: PropertiesTableProps) {
         return 'default'
     }
   }
-
-  const handleDelete = async (propertyId: string, propertyCreatorId: string) => {
-      const result = await deleteProperty(propertyId, propertyCreatorId);
-      if (result.success) {
-          toast({
-              title: "Success",
-              description: result.message,
-          });
-      } else {
-          toast({
-              title: "Error",
-              description: result.error,
-              variant: "destructive",
-          });
-      }
-  };
 
   return (
     <Table>

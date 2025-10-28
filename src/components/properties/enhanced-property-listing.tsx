@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,6 +20,7 @@ import {
   Calendar,
   Phone
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 interface Property {
   id: string;
@@ -124,16 +126,6 @@ export function EnhancedPropertyListing({ properties, userRole }: EnhancedProper
     // You could show a success toast here
   };
 
-  const formatPrice = (price: number) => {
-    if (price >= 10000000) {
-      return `₹${(price / 10000000).toFixed(1)}Cr`;
-    } else if (price >= 100000) {
-      return `₹${(price / 100000).toFixed(0)}L`;
-    } else {
-      return `₹${price.toLocaleString()}`;
-    }
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Available':
@@ -229,7 +221,7 @@ export function EnhancedPropertyListing({ properties, userRole }: EnhancedProper
 
                   <div className="flex items-center gap-1 text-lg font-bold text-green-600">
                     <DollarSign className="h-5 w-5" />
-                    <span>{formatPrice(property.price)}</span>
+                    <span>{formatCurrency(property.price)}</span>
                   </div>
 
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
