@@ -47,7 +47,7 @@ export async function assignLead(
             .select(`
                 *, 
                 properties:property_id(title, price), 
-                profiles:customer_id(first_name, last_name, phone)
+                profiles:customer_id(id, first_name, last_name, phone)
             `)
             .eq('id', propertyInterestId)
             .single();
@@ -94,9 +94,13 @@ export async function assignLead(
             description: `Customer is interested in the property: "${interest.properties.title}". Please contact them.`,
             assigned_to: teamMemberId,
             created_by: user.id,
-            status: 'Todo',
+            status: 'Todo' as const,
             due_date: taskDueDate,
-            related_property_id: interest.property_id
+            related_property_id: interest.property_id,
+            related_customer_id: interest.customer_id, // Link customer to task
+            customer_phone: interest.profiles.phone,     // Carry over phone number
+            task_type: 'Follow-up' as const,              // Set the task type
+            related_assignment_id: assignment.id,
         };
 
         const { data: newTask, error: taskError } = await supabase
