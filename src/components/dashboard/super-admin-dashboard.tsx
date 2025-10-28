@@ -44,39 +44,38 @@ export function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
   const [callTarget, setCallTarget] = useState<{ customerId: string; customerPhone: string; customerName: string } | null>(null);
   const [selectedTask, setSelectedTask] = useState<EnrichedTask | null>(null);
 
+  const fetchData = async () => {
+    const supabase = createClient();
+    setIsLoading(true);
+    const [
+      usersResult,
+      propertiesResult,
+      leadsResult,
+      callLogsResult,
+      appointmentsResult,
+      propertyInterestsResult,
+      tasksResult
+    ] = await Promise.all([
+      supabase.from('profiles').select('*'),
+      supabase.from('properties').select('*'),
+      supabase.from('leads').select('*'),
+      supabase.from('call_logs').select('*'),
+      supabase.from('appointments').select('*'),
+      supabase.from('property_interests').select('*'),
+      supabase.from('tasks').select('*, property:related_property_id(*, property_media(file_path)), customer:related_customer_id(*)').eq('assigned_to', userId)
+    ]);
+    
+    setUsers(usersResult.data || []);
+    setProperties(propertiesResult.data || []);
+    setLeads(leadsResult.data || []);
+    setCallLogs(callLogsResult.data || []);
+    setAppointments(appointmentsResult.data || []);
+    setPropertyInterests(propertyInterestsResult.data || []);
+    setTasks(tasksResult.data || []);
+    setIsLoading(false);
+  };
 
   useEffect(() => {
-    const supabase = createClient();
-    const fetchData = async () => {
-      setIsLoading(true);
-      const [
-        usersResult,
-        propertiesResult,
-        leadsResult,
-        callLogsResult,
-        appointmentsResult,
-        propertyInterestsResult,
-        tasksResult
-      ] = await Promise.all([
-        supabase.from('profiles').select('*'),
-        supabase.from('properties').select('*'),
-        supabase.from('leads').select('*'),
-        supabase.from('call_logs').select('*'),
-        supabase.from('appointments').select('*'),
-        supabase.from('property_interests').select('*'),
-        supabase.from('tasks').select('*, property:related_property_id(*, property_media(file_path)), customer:related_customer_id(*)').eq('assigned_to', userId)
-      ]);
-      
-      setUsers(usersResult.data || []);
-      setProperties(propertiesResult.data || []);
-      setLeads(leadsResult.data || []);
-      setCallLogs(callLogsResult.data || []);
-      setAppointments(appointmentsResult.data || []);
-      setPropertyInterests(propertyInterestsResult.data || []);
-      setTasks(tasksResult.data || []);
-      setIsLoading(false);
-    };
-
     fetchData();
   }, [userId]);
   
@@ -90,6 +89,11 @@ export function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
 
   const handleCallEnd = () => {
       setCallTarget(null);
+  };
+
+  const handleTaskUpdate = () => {
+    setSelectedTask(null);
+    fetchData(); // Refetch all data to update the dashboard
   };
 
 
@@ -149,6 +153,7 @@ export function SuperAdminDashboard({ userId }: SuperAdminDashboardProps) {
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
           onCall={handleCallClick}
+          onUpdate={handleTaskUpdate}
       />
       {callTarget && (
         <ExotelCallInterface 

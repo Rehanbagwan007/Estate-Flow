@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
@@ -46,58 +47,57 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
   const [callTarget, setCallTarget] = useState<{ customerId: string; customerPhone: string; customerName: string } | null>(null);
   const [selectedTask, setSelectedTask] = useState<EnrichedTask | null>(null);
 
+  const fetchData = async () => {
+    const supabase = createClient();
+    setIsLoading(true);
+    
+    const [
+      assignmentsResult,
+      appointmentsResult,
+      callLogsResult,
+      tasksResult,
+    ] = await Promise.all([
+      supabase
+          .from('agent_assignments')
+          .select(`
+              *, 
+              customer:profiles!agent_assignments_customer_id_fkey(*), 
+              property_interest:property_interests(
+                  *,
+                  property:properties(title)
+              )
+          `)
+          .eq('agent_id', userId)
+          .order('created_at', { ascending: false }),
+      supabase.from('appointments').select('*, customer:profiles!appointments_customer_id_fkey(*)').eq('agent_id', userId),
+      supabase.from('call_logs').select('*').eq('agent_id', userId),
+      supabase.from('tasks')
+        .select(`
+          *,
+          property:related_property_id(*, property_media(file_path)),
+          customer:related_customer_id(*)
+        `)
+        .eq('assigned_to', userId)
+        .order('created_at', { ascending: false }),
+    ]);
+
+    setAssignments((assignmentsResult.data as EnrichedAssignment[]) || []);
+    setAppointments(appointmentsResult.data || []);
+    setCallLogs(callLogsResult.data || []);
+    
+    const enrichedTasks = (tasksResult.data || []).map((task: any) => {
+      return {
+          ...task,
+          property: task.property,
+          customer: task.customer,
+      };
+    }) as EnrichedTask[];
+    
+    setTasks(enrichedTasks);
+    setIsLoading(false);
+  };
 
   useEffect(() => {
-    const supabase = createClient();
-    const fetchData = async () => {
-      setIsLoading(true);
-      
-      const [
-        assignmentsResult,
-        appointmentsResult,
-        callLogsResult,
-        tasksResult,
-      ] = await Promise.all([
-        supabase
-            .from('agent_assignments')
-            .select(`
-                *, 
-                customer:profiles!agent_assignments_customer_id_fkey(*), 
-                property_interest:property_interests(
-                    *,
-                    property:properties(title)
-                )
-            `)
-            .eq('agent_id', userId)
-            .order('created_at', { ascending: false }),
-        supabase.from('appointments').select('*, customer:profiles!appointments_customer_id_fkey(*)').eq('agent_id', userId),
-        supabase.from('call_logs').select('*').eq('agent_id', userId),
-        supabase.from('tasks')
-          .select(`
-            *,
-            property:related_property_id(*, property_media(file_path)),
-            customer:related_customer_id(*)
-          `)
-          .eq('assigned_to', userId)
-          .order('created_at', { ascending: false }),
-      ]);
-
-      setAssignments((assignmentsResult.data as EnrichedAssignment[]) || []);
-      setAppointments(appointmentsResult.data || []);
-      setCallLogs(callLogsResult.data || []);
-      
-      const enrichedTasks = (tasksResult.data || []).map((task: any) => {
-        return {
-            ...task,
-            property: task.property,
-            customer: task.customer,
-        };
-      }) as EnrichedTask[];
-      
-      setTasks(enrichedTasks);
-      setIsLoading(false);
-    };
-
     fetchData();
   }, [userId]);
   
@@ -112,6 +112,11 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
   const handleCallEnd = () => {
     setCallTarget(null);
     // Optionally refetch call logs here
+  };
+  
+  const handleTaskUpdate = () => {
+    setSelectedTask(null);
+    fetchData(); // Refetch all data to get the latest state
   };
 
 
@@ -139,6 +144,7 @@ export function AgentDashboard({ userId }: AgentDashboardProps) {
         isOpen={!!selectedTask}
         onClose={() => setSelectedTask(null)}
         onCall={handleCallClick}
+        onUpdate={handleTaskUpdate}
       />
       <div className="space-y-6">
         <div>

@@ -99,7 +99,6 @@ export function SalesExecutiveDashboard({ userId }: SalesExecutiveDashboardProps
 
     const handleTaskUpdate = () => {
         setSelectedTask(null);
-        // Refetch tasks to get the latest status
         fetchData();
     };
 
